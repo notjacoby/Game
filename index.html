@@ -3,14 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>3D Shooter Game</title>
+<title>FPS Shooter</title>
 <style>
-body { margin:0; overflow:hidden; font-family:sans-serif; background:#111; }
-#crosshair {
-  position:absolute; left:50%; top:50%;
-  width:20px; height:20px; margin-left:-10px; margin-top:-10px;
-  pointer-events:none;
-}
+body { margin:0; overflow:hidden; background:#111; }
+#crosshair { position:absolute; left:50%; top:50%; width:20px; height:20px; margin-left:-10px; margin-top:-10px; pointer-events:none; }
 #crosshair::before, #crosshair::after { content:""; position:absolute; background:white; }
 #crosshair::before { left:50%; top:0; width:2px; height:100%; margin-left:-1px; }
 #crosshair::after { top:50%; left:0; width:100%; height:2px; margin-top:-1px; }
@@ -44,8 +40,8 @@ select { padding:5px; font-size:16px; }
 <div id="crosshair"></div>
 
 <div id="start-screen">
-  <h2>3D Shooter</h2>
-  <p id="instructions">Move: A/D | Shoot: Left Click</p>
+  <h2>FPS Shooter</h2>
+  <p id="instructions">Move: A/D | Look: Mouse | Shoot: Left Click</p>
   <label>Select Gun:
     <select id="gunSelect">
       <option value="ak">AK-47</option>
@@ -72,17 +68,19 @@ select { padding:5px; font-size:16px; }
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/controls/PointerLockControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/loaders/GLTFLoader.js"></script>
 
-let scene, camera, renderer;
+<script>
+let scene, camera, renderer, controls;
 let bullets=[], enemies=[];
-let playerSpeed=0.03; // slower speed
+let playerSpeed=0.05;
 let score=0, lives=3, level=1, running=false;
 let keys={}, isMobile=false;
-let lastEnemySpawn=0, ENEMY_INTERVAL=3000, ENEMY_SPEED=0.015;
-let gunMesh;
+let lastEnemySpawn=0, ENEMY_INTERVAL=3000, ENEMY_SPEED=0.02;
+let gun, gunModel;
+const loader = new THREE.GLTFLoader();
 
-// UI elements
 const scoreboard=document.getElementById('scoreboard');
 const levelboard=document.getElementById('levelboard');
 const livesboard=document.getElementById('livesboard');
@@ -98,7 +96,6 @@ const rightBtn=document.getElementById('right-btn');
 const shootBtn=document.getElementById('shoot-btn');
 const instructions=document.getElementById('instructions');
 
-// Detect mobile
 function detectMobile(){
   isMobile = /Mobi|Android/i.test(navigator.userAgent);
   if(isMobile){
@@ -108,102 +105,98 @@ function detectMobile(){
       alert("Please rotate your device to landscape for better gameplay");
     }
   } else {
-    instructions.innerHTML="Move: A/D | Shoot: Left Click";
+    instructions.innerHTML="Move: A/D | Look: Mouse | Shoot: Left Click";
   }
 }
 
-// Initialize Three.js scene
 function init(){
-  scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x222222);
-  
-  camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x222222);
+
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
   camera.position.set(0,1.5,5);
-  
-  renderer=new THREE.WebGLRenderer({antialias:true});
-  renderer.setSize(window.innerWidth,window.innerHeight);
+
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
-  
-  // Room floor
-  const floorMat=new THREE.MeshStandardMaterial({color:0x555555});
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(20,20), floorMat);
-  floor.rotation.x=-Math.PI/2; floor.position.y=0; scene.add(floor);
-  
-  const light=new THREE.DirectionalLight(0xffffff,1);
-  light.position.set(5,10,5); scene.add(light);
-  
-  // Gun
-  gunMesh=createGunMesh(gunSelect.value);
-  gunMesh.position.set(0,1.4,0.5);
-  camera.add(gunMesh);
-  scene.add(camera);
-  
-  // Events
-  window.addEventListener('resize',()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); });
+
+  const light = new THREE.DirectionalLight(0xffffff,1);
+  light.position.set(5,10,5);
+  scene.add(light);
+
+  // Floor
+  const floorMat = new THREE.MeshStandardMaterial({color:0x555555});
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(50,50), floorMat);
+  floor.rotation.x = -Math.PI/2;
+  scene.add(floor);
+
+  // Controls
+  controls = new THREE.PointerLockControls(camera, renderer.domElement);
+
+  window.addEventListener('click', ()=>{
+    if(!running) return;
+    controls.lock();
+  });
+
+  window.addEventListener('resize', ()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
   window.addEventListener('keydown', e=>{ if(!isMobile) keys[e.key.toLowerCase()]=true; });
   window.addEventListener('keyup', e=>{ if(!isMobile) keys[e.key.toLowerCase()]=false; });
-  window.addEventListener('mousedown', e=>{ if(!running) return; if(!isMobile && e.button===0) shootBullet(); });
+  window.addEventListener('mousedown', e=>{ if(!isMobile && e.button===0) shootBullet(); });
 
   leftBtn.addEventListener('touchstart',()=>keys['a']=true);
   leftBtn.addEventListener('touchend',()=>keys['a']=false);
   rightBtn.addEventListener('touchstart',()=>keys['d']=true);
   rightBtn.addEventListener('touchend',()=>keys['d']=false);
   shootBtn.addEventListener('touchstart',()=>shootBullet());
+
+  loadGun(gunSelect.value);
 }
 
-// Create gun
-function createGunMesh(type){
-  const group=new THREE.Group();
-  if(type==='ak'){
-    const barrel=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.7), new THREE.MeshStandardMaterial({color:0x333333}));
-    barrel.position.set(0,0,0.35);
-    const body=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.05,0.2), new THREE.MeshStandardMaterial({color:0x222222}));
-    body.position.set(0,-0.025,-0.1);
-    group.add(barrel); group.add(body);
-  } else {
-    const barrel=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.5), new THREE.MeshStandardMaterial({color:0x444444}));
-    barrel.position.set(0,0,0.25);
-    const handle=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.05,0.15), new THREE.MeshStandardMaterial({color:0x222222}));
-    handle.position.set(0,-0.025,-0.05);
-    group.add(barrel); group.add(handle);
-  }
-  return group;
+function loadGun(type){
+  if(gunModel) camera.remove(gunModel);
+  const url = type==='ak' ? 
+    'https://models.babylonjs.com/ak47.glb' : 
+    'https://models.babylonjs.com/deagle.glb';
+  loader.load(url, gltf=>{
+    gunModel = gltf.scene;
+    gunModel.position.set(0,-0.3,-0.5);
+    gunModel.scale.set(1,1,1);
+    camera.add(gunModel);
+  });
 }
 
-// Shoot bullet
 function shootBullet(){
   if(!running) return;
-  const bullet=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), new THREE.MeshStandardMaterial({color:0xffff00}));
-  const gunWorldPos=new THREE.Vector3();
-  gunMesh.getWorldPosition(gunWorldPos);
-  bullet.position.copy(gunWorldPos);
-  const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).normalize();
-  bullets.push({mesh:bullet,direction:dir});
+  const bullet = new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), new THREE.MeshStandardMaterial({color:0xffff00}));
+  const pos = new THREE.Vector3();
+  camera.getWorldPosition(pos);
+  bullet.position.copy(pos);
+  const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).normalize();
+  bullets.push({mesh:bullet,dir:dir});
   scene.add(bullet);
 }
 
-// Spawn humanoid enemy
 function spawnEnemy(){
-  const enemy=new THREE.Group();
-  const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.2,0.5,4,8), new THREE.MeshStandardMaterial({color:0xff0000}));
-  body.position.y=0.25;
-  const head=new THREE.Mesh(new THREE.SphereGeometry(0.15,8,8), new THREE.MeshStandardMaterial({color:0xffaaaa}));
-  head.position.y=0.8;
-  enemy.add(body); enemy.add(head);
-  enemy.position.set((Math.random()-0.5)*8,0,-15);
-  enemies.push(enemy);
-  scene.add(enemy);
+  loader.load('https://models.babylonjs.com/humanoid.glb', gltf=>{
+    const enemy = gltf.scene;
+    enemy.position.set((Math.random()-0.5)*8,0,-20);
+    enemies.push(enemy);
+    scene.add(enemy);
+  });
 }
 
-// Update
 function update(){
-  if(keys['a']) camera.position.x -= playerSpeed;
-  if(keys['d']) camera.position.x += playerSpeed;
-  camera.position.x=Math.max(-8,Math.min(8,camera.position.x));
+  if(keys['a']) controls.moveRight(-playerSpeed);
+  if(keys['d']) controls.moveRight(playerSpeed);
 
   bullets.forEach((b,i)=>{
-    b.mesh.position.addScaledVector(b.direction,0.3);
-    if(b.mesh.position.z<-20 || b.mesh.position.z>10){ scene.remove(b.mesh); bullets.splice(i,1); }
+    b.mesh.position.addScaledVector(b.dir,0.5);
+    if(b.mesh.position.z<-50){ scene.remove(b.mesh); bullets.splice(i,1); }
   });
 
   enemies.forEach((e,i)=>{
@@ -215,7 +208,7 @@ function update(){
         score+=10; scoreboard.textContent='Score: '+score;
       }
     });
-    if(e.position.z>camera.position.z+0.5){
+    if(e.position.z>camera.position.z){
       scene.remove(e); enemies.splice(i,1);
       lives--; livesboard.textContent='Lives: '+lives;
       if(lives<=0) endGame();
@@ -228,14 +221,12 @@ function update(){
   if(newLevel>level){ level=newLevel; ENEMY_SPEED+=0.005; ENEMY_INTERVAL=Math.max(500,ENEMY_INTERVAL-100); levelboard.textContent='Level: '+level; }
 }
 
-// Animate
 function animate(){
   if(running) requestAnimationFrame(animate);
   update();
   renderer.render(scene,camera);
 }
 
-// Start/End
 function startGame(){
   detectMobile();
   if(!scene) init();
@@ -243,7 +234,6 @@ function startGame(){
   scoreboard.textContent='Score: 0'; livesboard.textContent='Lives: 3'; levelboard.textContent='Level: 1';
   running=true;
   startScreen.style.display='none'; gameOverScreen.style.display='none';
-  camera.position.set(0,1.5,5);
   animate();
 }
 
@@ -255,15 +245,9 @@ function endGame(){
 
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
-gunSelect.addEventListener('change', ()=>{
-  camera.remove(gunMesh);
-  gunMesh=createGunMesh(gunSelect.value);
-  gunMesh.position.set(0,1.4,0.5);
-  camera.add(gunMesh);
-});
+gunSelect.addEventListener('change', ()=>loadGun(gunSelect.value));
 
 detectMobile();
-
 </script>
 </body>
 </html>
