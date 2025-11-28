@@ -1,92 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Collect the Hearts</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shooting Game</title>
 <style>
-body,html{margin:0;padding:0;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#67b9ff,#c6a1ff);font-family:sans-serif;}
-.arena{position:relative;width:90vw;height:70vh;background:#f5fbff;border-radius:12px;overflow:hidden;}
-.heart{position:absolute;font-size:36px;cursor:grab;user-select:none;transition:transform .1s;}
-.drop-zone{position:absolute;right:20px;bottom:20px;width:120px;height:120px;border:3px dashed #8ecbff;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#dff3ff;}
-.drop-zone.active{transform:scale(1.05);}
+  body, html{margin:0;padding:0;height:100%;background:#222;display:flex;justify-content:center;align-items:center;font-family:sans-serif;}
+  #game{position:relative;width:400px;height:600px;background:#111;overflow:hidden;border:3px solid #fff;}
+  #player{position:absolute;bottom:10px;width:40px;height:40px;background:blue;}
+  .bullet{position:absolute;width:6px;height:12px;background:yellow;}
+  .enemy{position:absolute;width:30px;height:30px;background:red;}
+  #scoreboard{position:absolute;top:5px;left:5px;color:white;font-size:18px;}
 </style>
 </head>
 <body>
-<div class="arena" id="arena">
-  <div class="drop-zone" id="dropZone">🧺</div>
+<div id="game">
+  <div id="scoreboard">Score: 0</div>
+  <div id="player"></div>
 </div>
 
 <script>
-const arena = document.getElementById('arena');
-const dropZone = document.getElementById('dropZone');
+const game = document.getElementById('game');
+const player = document.getElementById('player');
+const scoreboard = document.getElementById('scoreboard');
+
 let score = 0;
-let running = true;
+let playerPos = 180;
+let bullets = [];
+let enemies = [];
+let gameOver = false;
 
-// Spawn hearts
-function spawnHeart() {
-  if(!running) return;
-  const heart = document.createElement('div');
-  heart.className = 'heart';
-  heart.textContent = '❤';
-  const rect = arena.getBoundingClientRect();
-  heart.style.left = Math.random()*(rect.width-50) + 'px';
-  heart.style.top = Math.random()*(rect.height-50) + 'px';
-  arena.appendChild(heart);
-  makeDraggable(heart);
-  setTimeout(()=>{ if(heart.parentElement) heart.remove(); },5000);
+// Move player
+document.addEventListener('keydown', (e)=>{
+  if(gameOver) return;
+  if(e.key === 'ArrowLeft') { playerPos = Math.max(0, playerPos - 15); player.style.left = playerPos + 'px'; }
+  if(e.key === 'ArrowRight') { playerPos = Math.min(360, playerPos + 15); player.style.left = playerPos + 'px'; }
+  if(e.key === ' ') shootBullet();
+});
+
+function shootBullet(){
+  const bullet = document.createElement('div');
+  bullet.className='bullet';
+  bullet.style.left = (playerPos + 17) + 'px';
+  bullet.style.bottom = '50px';
+  game.appendChild(bullet);
+  bullets.push(bullet);
 }
 
-// Drag logic
-function makeDraggable(el){
-  let offsetX=0,offsetY=0,dragging=false;
-  el.addEventListener('mousedown', startDrag);
-  el.addEventListener('touchstart', e => startDrag(e.touches[0]), {passive:false});
+// Spawn enemies
+function spawnEnemy(){
+  if(gameOver) return;
+  const enemy = document.createElement('div');
+  enemy.className='enemy';
+  enemy.style.left = Math.floor(Math.random()*370) + 'px';
+  enemy.style.top = '0px';
+  game.appendChild(enemy);
+  enemies.push(enemy);
+}
 
-  function startDrag(e){
-    dragging=true;
-    offsetX = e.clientX - el.offsetLeft;
-    offsetY = e.clientY - el.offsetTop;
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', endDrag);
-    document.addEventListener('touchmove', touchMove, {passive:false});
-    document.addEventListener('touchend', endDrag);
-  }
-  function move(e){
-    if(!dragging) return;
-    el.style.left = e.clientX - offsetX + 'px';
-    el.style.top = e.clientY - offsetY + 'px';
-    checkOverlap(el);
-  }
-  function touchMove(e){
-    move(e.touches[0]);
-  }
-  function endDrag(){
-    dragging=false;
-    if(isOverDrop(el)){
-      el.remove();
-      score += 10;
-      console.log("Score:", score);
+// Update game
+function gameLoop(){
+  if(gameOver) return;
+
+  // Move bullets
+  bullets.forEach((b,i)=>{
+    let bottom = parseInt(b.style.bottom);
+    bottom += 10;
+    b.style.bottom = bottom + 'px';
+    if(bottom > 600){
+      b.remove();
+      bullets.splice(i,1);
     }
-    dropZone.classList.remove('active');
-    document.removeEventListener('mousemove', move);
-    document.removeEventListener('mouseup', endDrag);
-    document.removeEventListener('touchmove', touchMove);
-    document.removeEventListener('touchend', endDrag);
-  }
+  });
+
+  // Move enemies
+  enemies.forEach((e,i)=>{
+    let top = parseInt(e.style.top);
+    top += 4;
+    e.style.top = top + 'px';
+
+    // Check collision with bullets
+    bullets.forEach((b,j)=>{
+      const bRect = b.getBoundingClientRect();
+      const eRect = e.getBoundingClientRect();
+      if(!(bRect.right < eRect.left || bRect.left > eRect.right || bRect.bottom < eRect.top || bRect.top > eRect.bottom)){
+        // hit!
+        score += 10;
+        scoreboard.textContent = 'Score: ' + score;
+        b.remove(); bullets.splice(j,1);
+        e.remove(); enemies.splice(i,1);
+      }
+    });
+
+    // Enemy reached bottom
+    if(top > 570){
+      e.remove(); enemies.splice(i,1);
+      endGame();
+    }
+  });
+
+  requestAnimationFrame(gameLoop);
 }
 
-function isOverDrop(el){
-  const a = el.getBoundingClientRect();
-  const b = dropZone.getBoundingClientRect();
-  const overlapX = Math.max(0, Math.min(a.right,b.right) - Math.max(a.left,b.left));
-  const overlapY = Math.max(0, Math.min(a.bottom,b.bottom) - Math.max(a.top,b.top));
-  if(overlapX*overlapY > 400){ dropZone.classList.add('active'); return true; }
-  return false;
+function endGame(){
+  gameOver = true;
+  alert('Game Over! Your score: ' + score);
+  location.reload();
 }
 
-// Spawn hearts every second
-setInterval(spawnHeart, 1000);
+// Spawn enemies every 1 second
+setInterval(spawnEnemy, 1000);
+
+// Start game loop
+gameLoop();
 </script>
 </body>
 </html>
