@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D FPS Shooting Game</title>
+<title>3D FPS Shooter</title>
 <style>
 body { margin:0; overflow:hidden; background:#222; font-family:sans-serif; }
 #ui { position:absolute; top:10px; left:10px; color:white; z-index:10; }
@@ -18,9 +18,19 @@ select { padding:5px; font-size:16px; }
 .control-btn { width:60px; height:60px; background:rgba(255,255,255,0.3); border-radius:50%; font-size:24px; text-align:center; line-height:60px; user-select:none; }
 .control-btn:active { background:rgba(255,255,255,0.6); }
 #crosshair {
-  position:absolute; left:50%; top:50%; width:10px; height:10px;
-  margin-left:-5px; margin-top:-5px; background:red; border-radius:50%; z-index:11;
+  position:absolute; top:50%; left:50%;
+  width:20px; height:20px;
+  margin-left:-10px; margin-top:-10px;
+  pointer-events:none;
+  z-index:10;
 }
+#crosshair::before, #crosshair::after {
+  content:'';
+  position:absolute;
+  background:white;
+}
+#crosshair::before { left:9px; top:0; width:2px; height:20px; }
+#crosshair::after { top:9px; left:0; width:20px; height:2px; }
 </style>
 </head>
 <body>
@@ -30,6 +40,8 @@ select { padding:5px; font-size:16px; }
   <div id="levelboard">Level: 1</div>
   <div id="livesboard">Lives: 3</div>
 </div>
+
+<div id="crosshair"></div>
 
 <div id="start-screen">
   <h2>3D FPS Shooter</h2>
@@ -55,15 +67,12 @@ select { padding:5px; font-size:16px; }
   <div id="right-btn" class="control-btn">▶</div>
 </div>
 
-<div id="crosshair"></div>
-
 <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/controls/PointerLockControls.js"></script>
-
 <script>
 let scene, camera, renderer, controls;
 let bullets=[], enemies=[];
-let playerSpeed=0.08; // slower movement
+let playerSpeed=0.08;
 let score=0, lives=3, level=1, running=false;
 let keys={}, isMobile=false;
 let lastEnemySpawn=0, ENEMY_INTERVAL=2500, ENEMY_SPEED=0.03;
@@ -85,7 +94,6 @@ const rightBtn=document.getElementById('right-btn');
 const shootBtn=document.getElementById('shoot-btn');
 const instructions=document.getElementById('instructions');
 
-// Detect Mobile
 function detectMobile(){
   isMobile = /Mobi|Android/i.test(navigator.userAgent);
   if(isMobile){
@@ -96,7 +104,6 @@ function detectMobile(){
   }
 }
 
-// Initialize Three.js Scene
 function init(){
   scene=new THREE.Scene();
   scene.background=new THREE.Color(0x444444);
@@ -108,11 +115,10 @@ function init(){
   renderer.setSize(window.innerWidth,window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // Pointer Lock Controls
+  // PointerLockControls for free aiming
   controls=new THREE.PointerLockControls(camera, document.body);
-  document.addEventListener('click', ()=>{ if(running) controls.lock(); });
-
   scene.add(controls.getObject());
+  document.addEventListener('click', ()=>{ if(running && !isMobile) controls.lock(); });
 
   // Room
   const floorMat=new THREE.MeshStandardMaterial({color:0x555555});
@@ -122,21 +128,22 @@ function init(){
   const wallMat=new THREE.MeshStandardMaterial({color:0x666666});
   const backWall=new THREE.Mesh(new THREE.PlaneGeometry(20,10), wallMat);
   backWall.position.z=-10; backWall.position.y=5; scene.add(backWall);
+
   const leftWall=new THREE.Mesh(new THREE.PlaneGeometry(20,10), wallMat);
   leftWall.rotation.y=Math.PI/2; leftWall.position.x=-10; leftWall.position.y=5; scene.add(leftWall);
+
   const rightWall=new THREE.Mesh(new THREE.PlaneGeometry(20,10), wallMat);
   rightWall.rotation.y=-Math.PI/2; rightWall.position.x=10; rightWall.position.y=5; scene.add(rightWall);
 
-  // Light
   const light=new THREE.DirectionalLight(0xffffff,1);
   light.position.set(5,10,5); scene.add(light);
 
   // Gun
   gunMesh=createGunMesh(gunSelect.value);
-  gunMesh.position.set(0,-0.2,-0.5); // relative to camera
+  gunMesh.position.set(0,-0.2,-0.5);
   camera.add(gunMesh);
 
-  // Event Listeners
+  // Event listeners
   window.addEventListener('resize',()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); });
   window.addEventListener('keydown', e=>{ if(!isMobile) keys[e.key.toLowerCase()]=true; });
   window.addEventListener('keyup', e=>{ if(!isMobile) keys[e.key.toLowerCase()]=false; });
@@ -149,7 +156,6 @@ function init(){
   shootBtn.addEventListener('touchstart',()=>shootBullet());
 }
 
-// Create forward-facing gun
 function createGunMesh(type){
   const group=new THREE.Group();
   if(type==='ak'){
@@ -168,7 +174,6 @@ function createGunMesh(type){
   return group;
 }
 
-// Shoot bullet
 function shootBullet(){
   const bullet=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), new THREE.MeshStandardMaterial({color:0xffff00}));
   bullet.position.copy(camera.position);
@@ -178,7 +183,6 @@ function shootBullet(){
   scene.add(bullet);
 }
 
-// Spawn enemy in front
 function spawnEnemy(){
   const enemy=new THREE.Mesh(new THREE.BoxGeometry(0.5,1,0.3), new THREE.MeshStandardMaterial({color:0xff0000}));
   enemy.position.set((Math.random()-0.5)*8,0.5,camera.position.z-15);
@@ -186,20 +190,17 @@ function spawnEnemy(){
   scene.add(enemy);
 }
 
-// Update game logic
 function update(){
   if(keys['a']) controls.moveRight(-playerSpeed);
   if(keys['d']) controls.moveRight(playerSpeed);
 
-  // Update bullets
   bullets.forEach((b,i)=>{
     b.mesh.position.addScaledVector(b.direction,0.3);
     if(b.mesh.position.distanceTo(camera.position)>50){ scene.remove(b.mesh); bullets.splice(i,1); }
   });
 
-  // Update enemies
   enemies.forEach((e,i)=>{
-    e.position.z += ENEMY_SPEED; // toward player
+    e.position.z += ENEMY_SPEED;
     bullets.forEach((b,j)=>{
       if(e.position.distanceTo(b.mesh.position)<0.5){
         scene.remove(e); enemies.splice(i,1);
@@ -220,14 +221,12 @@ function update(){
   if(newLevel>level){ level=newLevel; ENEMY_SPEED+=0.005; ENEMY_INTERVAL=Math.max(500,ENEMY_INTERVAL-100); levelboard.textContent='Level: '+level; }
 }
 
-// Animate
 function animate(){
   if(running) requestAnimationFrame(animate);
   update();
   renderer.render(scene,camera);
 }
 
-// Start / End Game
 function startGame(){
   detectMobile();
   if(!scene) init();
@@ -250,6 +249,7 @@ function endGame(){
 
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
+
 gunSelect.addEventListener('change', ()=>{
   camera.remove(gunMesh);
   gunMesh=createGunMesh(gunSelect.value);
@@ -259,6 +259,5 @@ gunSelect.addEventListener('change', ()=>{
 
 detectMobile();
 </script>
-
 </body>
 </html>
