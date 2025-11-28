@@ -18,7 +18,6 @@ body { margin:0; overflow:hidden; background:#111; }
   text-align:center;
 }
 button { padding:10px 20px; font-size:16px; border:none; border-radius:6px; cursor:pointer; background:#4caf50; color:white; }
-select { padding:5px; font-size:16px; }
 
 #mobile-controls {
   position:absolute; bottom:20px; width:100%; display:flex; justify-content:space-between; z-index:10;
@@ -42,12 +41,6 @@ select { padding:5px; font-size:16px; }
 <div id="start-screen">
   <h2>FPS Shooter</h2>
   <p id="instructions">Move: A/D | Look: Mouse | Shoot: Left Click</p>
-  <label>Select Gun:
-    <select id="gunSelect">
-      <option value="ak">AK-47</option>
-      <option value="deagle">Deagle</option>
-    </select>
-  </label>
   <button id="start-btn">Start Game</button>
 </div>
 
@@ -69,18 +62,16 @@ select { padding:5px; font-size:16px; }
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/controls/PointerLockControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
 let scene, camera, renderer, controls;
 let bullets=[], enemies=[];
-let playerSpeed=0.05;
+let playerSpeed=0.08;
 let score=0, lives=3, level=1, running=false;
 let keys={}, isMobile=false;
 let lastEnemySpawn=0, ENEMY_INTERVAL=3000, ENEMY_SPEED=0.02;
-let gun, gunModel;
-const loader = new THREE.GLTFLoader();
 
+// UI elements
 const scoreboard=document.getElementById('scoreboard');
 const levelboard=document.getElementById('levelboard');
 const livesboard=document.getElementById('livesboard');
@@ -89,7 +80,6 @@ const startBtn=document.getElementById('start-btn');
 const gameOverScreen=document.getElementById('game-over-screen');
 const finalScore=document.getElementById('final-score');
 const restartBtn=document.getElementById('restart-btn');
-const gunSelect=document.getElementById('gunSelect');
 const mobileControls=document.getElementById('mobile-controls');
 const leftBtn=document.getElementById('left-btn');
 const rightBtn=document.getElementById('right-btn');
@@ -102,7 +92,7 @@ function detectMobile(){
     mobileControls.style.display='flex';
     instructions.innerHTML="Use buttons to move & shoot";
     if(window.innerHeight > window.innerWidth){
-      alert("Please rotate your device to landscape for better gameplay");
+      alert("Rotate your device to landscape for better gameplay");
     }
   } else {
     instructions.innerHTML="Move: A/D | Look: Mouse | Shoot: Left Click";
@@ -130,9 +120,14 @@ function init(){
   floor.rotation.x = -Math.PI/2;
   scene.add(floor);
 
+  // Simple "gun" as a box
+  const gunMat = new THREE.MeshStandardMaterial({color:0x00ff00});
+  const gunBox = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.5), gunMat);
+  gunBox.position.set(0,-0.3,-0.5);
+  camera.add(gunBox);
+
   // Controls
   controls = new THREE.PointerLockControls(camera, renderer.domElement);
-
   window.addEventListener('click', ()=>{
     if(!running) return;
     controls.lock();
@@ -153,21 +148,6 @@ function init(){
   rightBtn.addEventListener('touchstart',()=>keys['d']=true);
   rightBtn.addEventListener('touchend',()=>keys['d']=false);
   shootBtn.addEventListener('touchstart',()=>shootBullet());
-
-  loadGun(gunSelect.value);
-}
-
-function loadGun(type){
-  if(gunModel) camera.remove(gunModel);
-  const url = type==='ak' ? 
-    'https://models.babylonjs.com/ak47.glb' : 
-    'https://models.babylonjs.com/deagle.glb';
-  loader.load(url, gltf=>{
-    gunModel = gltf.scene;
-    gunModel.position.set(0,-0.3,-0.5);
-    gunModel.scale.set(1,1,1);
-    camera.add(gunModel);
-  });
 }
 
 function shootBullet(){
@@ -182,12 +162,11 @@ function shootBullet(){
 }
 
 function spawnEnemy(){
-  loader.load('https://models.babylonjs.com/humanoid.glb', gltf=>{
-    const enemy = gltf.scene;
-    enemy.position.set((Math.random()-0.5)*8,0,-20);
-    enemies.push(enemy);
-    scene.add(enemy);
-  });
+  const enemyMat = new THREE.MeshStandardMaterial({color:0xff0000});
+  const enemy = new THREE.Mesh(new THREE.BoxGeometry(0.5,1,0.3), enemyMat);
+  enemy.position.set((Math.random()-0.5)*8,0,-20);
+  enemies.push(enemy);
+  scene.add(enemy);
 }
 
 function update(){
@@ -245,7 +224,6 @@ function endGame(){
 
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
-gunSelect.addEventListener('change', ()=>loadGun(gunSelect.value));
 
 detectMobile();
 </script>
