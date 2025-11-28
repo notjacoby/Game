@@ -127,17 +127,14 @@ let score = 0, timeLeft = 30, level = 1;
 let gameTimer = null, spawnTimer = null;
 let running = false;
 
-/* ---------- Settings ---------- */
 const GAME_LENGTH = 30;       // seconds
 const INITIAL_SPAWN_MS = 1200; // initial spawn frequency
 const SPAWN_DECREASE = 80;    // spawn faster per level
 const MAX_LEVEL = 6;
 
-/* ---------- Utility: random position inside arena ---------- */
 function rand(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
 function arenaRect(){ return arena.getBoundingClientRect(); }
 
-/* ---------- Create a heart element ---------- */
 function spawnHeart() {
   if (!running) return;
   const rect = arenaRect();
@@ -145,7 +142,6 @@ function spawnHeart() {
   heart.className = 'heart';
   heart.innerHTML = '❤';
   const size = 56;
-  // spawn somewhere not overlapping the drop zone area
   const left = rand(12, Math.max(12, rect.width - size - 12));
   const top = rand(60, Math.max(60, rect.height - size - 40));
   heart.style.left = left + 'px';
@@ -153,24 +149,14 @@ function spawnHeart() {
   heart.style.fontSize = '34px';
   heart.style.willChange = 'transform,left,top';
   heartsWrap.appendChild(heart);
-
   makeDraggable(heart);
-  // remove after some time if not collected
-  setTimeout(()=> {
-    if (heart && heart.parentElement) {
-      heart.remove();
-    }
-  }, 9000 - (level*700));
+  setTimeout(()=> { if (heart && heart.parentElement) heart.remove(); }, 9000 - (level*700));
 }
 
-/* ---------- Drag / Touch support for heart ---------- */
 function makeDraggable(el) {
   let dragging = false, offsetX=0, offsetY=0;
   el.style.touchAction = 'none';
-
-  // Mouse
   el.addEventListener('mousedown', startDrag);
-  // Touch
   el.addEventListener('touchstart', (e)=> startDrag(e.touches[0]), {passive:false});
 
   function startDrag(e){
@@ -191,15 +177,9 @@ function makeDraggable(el) {
     const y = e.clientY - offsetY;
     el.style.left = Math.max(6, Math.min(x, arenaRect().width - el.offsetWidth - 6)) + 'px';
     el.style.top  = Math.max(36, Math.min(y, arenaRect().height - el.offsetHeight - 6)) + 'px';
-    // visual feedback when over drop zone
     checkOverlap(el);
   }
-  function onTouchMove(e){
-    if(!dragging) return;
-    e.preventDefault();
-    const t = e.touches[0];
-    onMove(t);
-  }
+  function onTouchMove(e){ if(!dragging) return; e.preventDefault(); onMove(e.touches[0]); }
   function endDrag(e){
     dragging = false;
     el.style.zIndex = 2;
@@ -207,61 +187,40 @@ function makeDraggable(el) {
     document.removeEventListener('mouseup', endDrag);
     document.removeEventListener('touchmove', onTouchMove);
     document.removeEventListener('touchend', endDrag);
-    // final check: if dropped in drop zone => collect
-    if (isOverDrop(el)) {
-      collectHeart(el);
-    } else {
-      dropZone.classList.remove('active');
-      // little nudge back effect
-      el.style.transform = 'scale(0.98)';
-      setTimeout(()=> el.style.transform = '', 140);
-    }
+    if (isOverDrop(el)) collectHeart(el);
+    else { dropZone.classList.remove('active'); el.style.transform='scale(0.98)'; setTimeout(()=> el.style.transform='',140);}
   }
 }
 
-/* ---------- Collision detection ---------- */
 function isOverDrop(el){
   const a = el.getBoundingClientRect();
   const b = dropZone.getBoundingClientRect();
   const overlapX = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
   const overlapY = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-  const area = overlapX * overlapY;
-  // require at least some area overlap
-  return area > 400;
+  return (overlapX * overlapY) > 400;
 }
 
-function checkOverlap(el){
-  if(isOverDrop(el)) dropZone.classList.add('active');
-  else dropZone.classList.remove('active');
-}
+function checkOverlap(el){ if(isOverDrop(el)) dropZone.classList.add('active'); else dropZone.classList.remove('active'); }
 
-/* ---------- Collect heart ---------- */
 function collectHeart(el){
-  // play small animation and remove
   el.style.transform = 'scale(0.6) rotate(-20deg)';
   el.style.opacity = '0';
   setTimeout(()=> el.remove(), 180);
-
-  // increment score
   score += 10;
   scorePanel.textContent = score;
-  // quick pop on basket
   dropZone.style.transform = 'scale(1.08)';
-  setTimeout(()=> dropZone.style.transform = '', 120);
+  setTimeout(()=> dropZone.style.transform='',120);
 }
 
-/* ---------- Game loop: spawn hearts ---------- */
 function scheduleSpawns(){
   clearInterval(spawnTimer);
   const spawnMs = Math.max(300, INITIAL_SPAWN_MS - (level-1)*SPAWN_DECREASE);
   spawnTimer = setInterval(()=> {
-    // spawn 1-2 hearts depending on level
     const n = (level >= 4)? (Math.random() < 0.6 ? 2 : 1) : 1;
     for(let i=0;i<n;i++) spawnHeart();
   }, spawnMs);
 }
 
-/* ---------- Timer ---------- */
 function startTimer(){
   clearInterval(gameTimer);
   timeLeft = GAME_LENGTH;
@@ -270,15 +229,11 @@ function startTimer(){
     timeLeft--;
     timePanel.textContent = timeLeft;
     document.getElementById('timeDisplay').textContent = 'Time: ' + timeLeft;
-    if(timeLeft <= 0){
-      endGame();
-    }
+    if(timeLeft <= 0) endGame();
   }, 1000);
 }
 
-/* ---------- Start / End / Restart ---------- */
 function startGame(){
-  // reset
   score = 0; level = 1;
   scorePanel.textContent = score;
   levelPanel.textContent = level;
@@ -293,20 +248,16 @@ function endGame(){
   running = false;
   clearInterval(spawnTimer);
   clearInterval(gameTimer);
-  // remove remaining hearts
   heartsWrap.querySelectorAll('.heart').forEach(h => h.remove());
   dropZone.classList.remove('active');
-  // show result overlay inside startScreen (reuse)
   startScreen.style.display = 'flex';
   startScreen.querySelector('h2').textContent = 'Time’s up!';
   startScreen.querySelector('p').textContent = 'Your score: ' + score + ' — Nice job!';
   startScreen.querySelector('#startBtn').textContent = 'Play Again';
-  // confetti celebration
   runConfetti();
 }
 
 function restartGame(){
-  // reset overlay text
   startScreen.querySelector('h2').textContent = 'Welcome!';
   startScreen.querySelector('p').textContent = 'Drag hearts into the basket. Collect as many as you can in 30 seconds!';
   startScreen.querySelector('#startBtn').textContent = 'Start Game';
@@ -322,17 +273,11 @@ function restartGame(){
   confettiOff();
 }
 
-/* ---------- Level up logic (based on score) ---------- */
 function checkLevelUp(){
   const newLevel = Math.min(MAX_LEVEL, Math.floor(score/50) + 1);
-  if(newLevel !== level){
-    level = newLevel;
-    levelPanel.textContent = level;
-    scheduleSpawns();
-  }
+  if(newLevel !== level){ level = newLevel; levelPanel.textContent = level; scheduleSpawns();}
 }
 
-/* ---------- Confetti (simple canvas) ---------- */
 const confettiCanvas = document.getElementById('confettiCanvas');
 const confettiCtx = confettiCanvas.getContext && confettiCanvas.getContext('2d');
 let confettiPieces=[], confettiAnim=null;
@@ -378,37 +323,17 @@ function confettiOff(){
   if(confettiCanvas) confettiCanvas.style.display = 'none';
 }
 
-/* ---------- UI events ---------- */
-startBtn.addEventListener('click', () => {
-  // when starting first time, reset button text maybe
-  startGame();
-  // reset overlay content (in case reusing)
-  startScreen.querySelector('h2').textContent = 'Good luck!';
-  startScreen.querySelector('p').textContent = '';
-  startScreen.style.display = 'none';
-});
+restartBtn.addEventListener('click', restartGame);
 
-restartBtn.addEventListener('click', () => {
-  restartGame();
-});
+/* Periodic tasks */
+setInterval(()=> { document.getElementById('scoreDisplay').textContent = 'Score: ' + score; checkLevelUp(); }, 300);
 
-/* ---------- Periodic tasks ---------- */
-setInterval(()=> {
-  // keep "Score" display consistent
-  document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
-  checkLevelUp();
-}, 300);
+/* Window resize */
+window.addEventListener('resize', ()=> { confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; });
 
-/* ---------- Accessibility / window resize ---------- */
-window.addEventListener('resize', ()=> {
-  confettiCanvas.width = window.innerWidth;
-  confettiCanvas.height = window.innerHeight;
-});
-
-/* ---------- Friendly auto-spawn while waiting (visual) ---------- */
+/* Friendly idle hearts */
 let idleSpawner = setInterval(()=> {
   if(!running){
-    // show one small heart drifting
     const rect = arenaRect();
     const el = document.createElement('div'); el.className='heart'; el.style.opacity='0.85'; el.innerHTML='❤';
     el.style.left = (rect.width/2 - 28 + rand(-120,120)) + 'px';
@@ -419,18 +344,5 @@ let idleSpawner = setInterval(()=> {
   }
 }, 1100);
 
-/* ---------- Game tick to spawn initial hearts while running ---------- */
 (function gameTicker(){
-  setInterval(()=> {
-    if(running){
-      spawnHeart();
-      // occasionally spawn extra
-      if(Math.random() < 0.2) spawnHeart();
-    }
-  }, 900);
-})();
-
-</script>
-</body>
-</html>
-flex;align-
+  setInterval(()=> { if(running){ spawnHeart(); if(Math.random() < 0.2) spawn
