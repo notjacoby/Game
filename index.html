@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Collect the Hearts — Thankful Game</title>
+<link href="https://fonts.googleapis.com/css?family=Pacifico|Poppins:400,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg1:#67b9ff; --bg2:#c6a1ff; --blue:#3D6CA6; --pink:#ffb6d5; --card:#f8faff;
+  }
+  *{box-sizing:border-box}
+  body,html{height:100%;margin:0;font-family:'Poppins',sans-serif;background:linear-gradient(135deg,var(--bg1),var(--bg2));-webkit-font-smoothing:antialiased}
+  .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .card{background:rgba(255,255,255,0.95);width:980px;max-width:100%;border-radius:18px;box-shadow:0 20px 50px rgba(20,60,120,0.12);overflow:hidden}
+  header{padding:28px 28px 12px;display:flex;align-items:center;gap:16px}
+  h1{font-family:'Pacifico',cursive;margin:0;color:var(--blue);font-size:28px}
+  .controls{margin-left:auto;display:flex;gap:10px;align-items:center}
+  button{background:linear-gradient(90deg,var(--bg1),var(--bg2));color:white;border:0;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(100,140,255,0.15)}
+  button.ghost{background:transparent;color:var(--blue);box-shadow:none;border:2px solid rgba(61,108,166,0.12)}
+  main{display:grid;grid-template-columns:1fr 320px;gap:18px;padding:18px}
+  /* Game area */
+  .arena{background:linear-gradient(180deg,#f5fbff 0%, #eaf6ff 100%);border-radius:12px;padding:12px;position:relative;min-height:480px;overflow:hidden}
+  .status{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+  .pill{background:#fff;border-radius:10px;padding:8px 12px;font-weight:700;color:var(--blue);box-shadow:0 6px 18px rgba(100,140,255,0.06)}
+  .drop-zone{position:absolute;right:22px;bottom:22px;width:120px;height:120px;border-radius:18px;border:3px dashed #8ecbff;display:flex;align-
