@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D FPS Shooting Game</title>
+<title>3D FPS Auto-Aim Game</title>
 <style>
 body { margin:0; overflow:hidden; background:#222; font-family:sans-serif; }
 #ui { position:absolute; top:10px; left:10px; color:white; z-index:10; }
@@ -52,17 +52,17 @@ select { padding:5px; font-size:16px; }
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
-
 <script>
+
 let scene, camera, renderer;
 let bullets=[], enemies=[];
-let playerSpeed=0.12; // slower movement
+let playerSpeed=0.08; // slightly slower
 let score=0, lives=3, level=1, running=false;
 let keys={}, isMobile=false;
 let lastEnemySpawn=0, ENEMY_INTERVAL=2500, ENEMY_SPEED=0.03;
 let gunMesh;
 
-// UI
+// UI elements
 const scoreboard=document.getElementById('scoreboard');
 const levelboard=document.getElementById('levelboard');
 const livesboard=document.getElementById('livesboard');
@@ -78,18 +78,18 @@ const rightBtn=document.getElementById('right-btn');
 const shootBtn=document.getElementById('shoot-btn');
 const instructions=document.getElementById('instructions');
 
-// Detect Mobile
+// Detect mobile
 function detectMobile(){
   isMobile = /Mobi|Android/i.test(navigator.userAgent);
   if(isMobile){
     mobileControls.style.display='flex';
     instructions.innerHTML="Use buttons to move & shoot";
-  }else{
+  } else {
     instructions.innerHTML="Move: A/D | Shoot: Left Click";
   }
 }
 
-// Initialize Three.js Scene
+// Initialize Three.js scene
 function init(){
   scene=new THREE.Scene();
   scene.background=new THREE.Color(0x444444);
@@ -102,7 +102,7 @@ function init(){
   renderer.setSize(window.innerWidth,window.innerHeight);
   document.body.appendChild(renderer.domElement);
   
-  // Room (floor + walls)
+  // Room: floor and walls
   const floorMat=new THREE.MeshStandardMaterial({color:0x555555});
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(20,20), floorMat);
   floor.rotation.x=-Math.PI/2; floor.position.y=0; scene.add(floor);
@@ -119,13 +119,13 @@ function init(){
   const light=new THREE.DirectionalLight(0xffffff,1);
   light.position.set(5,10,5); scene.add(light);
   
-  // Gun (forward-facing)
+  // Gun
   gunMesh=createGunMesh(gunSelect.value);
   gunMesh.position.set(0,1.4,0.5); // in front of camera
   camera.add(gunMesh);
   scene.add(camera);
   
-  // Event Listeners
+  // Event listeners
   window.addEventListener('resize',()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); });
   window.addEventListener('keydown', e=>{ if(!isMobile) keys[e.key.toLowerCase()]=true; });
   window.addEventListener('keyup', e=>{ if(!isMobile) keys[e.key.toLowerCase()]=false; });
@@ -159,13 +159,19 @@ function createGunMesh(type){
 
 // Shoot bullet
 function shootBullet(){
+  if(!running) return;
   const bullet=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), new THREE.MeshStandardMaterial({color:0xffff00}));
-  bullet.position.copy(camera.position);
-  bullets.push({mesh:bullet, direction:new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion)});
+  const gunWorldPos=new THREE.Vector3();
+  gunMesh.getWorldPosition(gunWorldPos);
+  bullet.position.copy(gunWorldPos);
+  
+  // Bullet goes toward where gun is pointing
+  const dir=new THREE.Vector3(0,0,1).applyQuaternion(gunMesh.quaternion).normalize();
+  bullets.push({mesh:bullet,direction:dir});
   scene.add(bullet);
 }
 
-// Spawn enemy in front
+// Spawn enemy
 function spawnEnemy(){
   const enemy=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.5), new THREE.MeshStandardMaterial({color:0xff0000}));
   enemy.position.set((Math.random()-0.5)*8,0.25,-15);
@@ -173,7 +179,28 @@ function spawnEnemy(){
   scene.add(enemy);
 }
 
-// Update game logic
+// Update gun to aim at closest enemy
+function updateGunAim(){
+  if(enemies.length===0) return;
+  let closest=null;
+  let minDist=Infinity;
+  enemies.forEach(e=>{
+    const dist=e.position.distanceTo(camera.position);
+    if(dist<minDist && e.position.z<camera.position.z){
+      minDist=dist;
+      closest=e;
+    }
+  });
+  if(closest){
+    const gunWorldPos=new THREE.Vector3();
+    gunMesh.getWorldPosition(gunWorldPos);
+    const dir=new THREE.Vector3().subVectors(closest.position,gunWorldPos).normalize();
+    const targetQuaternion=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),dir);
+    gunMesh.setRotationFromQuaternion(targetQuaternion);
+  }
+}
+
+// Update game
 function update(){
   if(keys['a']) camera.position.x -= playerSpeed;
   if(keys['d']) camera.position.x += playerSpeed;
@@ -187,7 +214,7 @@ function update(){
 
   // Update enemies
   enemies.forEach((e,i)=>{
-    e.position.z += ENEMY_SPEED; // toward player
+    e.position.z += ENEMY_SPEED;
     bullets.forEach((b,j)=>{
       if(e.position.distanceTo(b.mesh.position)<0.5){
         scene.remove(e); enemies.splice(i,1);
@@ -206,6 +233,8 @@ function update(){
 
   let newLevel=Math.floor(score/100)+1;
   if(newLevel>level){ level=newLevel; ENEMY_SPEED+=0.005; ENEMY_INTERVAL=Math.max(500,ENEMY_INTERVAL-100); levelboard.textContent='Level: '+level; }
+
+  updateGunAim(); // auto-aim gun at closest enemy
 }
 
 // Animate
@@ -215,7 +244,7 @@ function animate(){
   renderer.render(scene,camera);
 }
 
-// Start / End Game
+// Start / End game
 function startGame(){
   detectMobile();
   if(!scene) init();
@@ -246,7 +275,7 @@ gunSelect.addEventListener('change', ()=>{
 });
 
 detectMobile();
-</script>
 
+</script>
 </body>
 </html>
