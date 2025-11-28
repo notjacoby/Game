@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D FPS Shooter</title>
+<title>3D FPS Shooter Simplified</title>
 <style>
 body { margin:0; overflow:hidden; background:#222; font-family:sans-serif; }
 #ui { position:absolute; top:10px; left:10px; color:white; z-index:10; }
@@ -44,8 +44,8 @@ select { padding:5px; font-size:16px; }
 <div id="crosshair"></div>
 
 <div id="start-screen">
-  <h2>3D FPS Shooter</h2>
-  <p id="instructions">Move: A/D | Aim: Mouse | Shoot: Left Click</p>
+  <h2>3D Shooter</h2>
+  <p id="instructions">Move: A/D | Shoot: Left Click</p>
   <label>Select Gun:
     <select id="gunSelect">
       <option value="ak">AK-47</option>
@@ -68,11 +68,10 @@ select { padding:5px; font-size:16px; }
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/examples/js/controls/PointerLockControls.js"></script>
 <script>
-let scene, camera, renderer, controls;
+let scene, camera, renderer;
 let bullets=[], enemies=[];
-let playerSpeed=0.08;
+let playerSpeed=0.12;
 let score=0, lives=3, level=1, running=false;
 let keys={}, isMobile=false;
 let lastEnemySpawn=0, ENEMY_INTERVAL=2500, ENEMY_SPEED=0.03;
@@ -100,14 +99,14 @@ function detectMobile(){
     mobileControls.style.display='flex';
     instructions.innerHTML="Use buttons to move & shoot";
   }else{
-    instructions.innerHTML="Move: A/D | Aim: Mouse | Shoot: Left Click";
+    instructions.innerHTML="Move: A/D | Shoot: Left Click";
   }
 }
 
 function init(){
   scene=new THREE.Scene();
   scene.background=new THREE.Color(0x444444);
-  
+
   camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
   camera.position.set(0,1.5,5);
 
@@ -115,32 +114,18 @@ function init(){
   renderer.setSize(window.innerWidth,window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // PointerLockControls for free aiming
-  controls=new THREE.PointerLockControls(camera, document.body);
-  scene.add(controls.getObject());
-  document.addEventListener('click', ()=>{ if(running && !isMobile) controls.lock(); });
-
-  // Room
+  // Floor
   const floorMat=new THREE.MeshStandardMaterial({color:0x555555});
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(20,20), floorMat);
   floor.rotation.x=-Math.PI/2; floor.position.y=0; scene.add(floor);
 
-  const wallMat=new THREE.MeshStandardMaterial({color:0x666666});
-  const backWall=new THREE.Mesh(new THREE.PlaneGeometry(20,10), wallMat);
-  backWall.position.z=-10; backWall.position.y=5; scene.add(backWall);
-
-  const leftWall=new THREE.Mesh(new THREE.PlaneGeometry(20,10), wallMat);
-  leftWall.rotation.y=Math.PI/2; leftWall.position.x=-10; leftWall.position.y=5; scene.add(leftWall);
-
-  const rightWall=new THREE.Mesh(new THREE.PlaneGeometry(20,10), wallMat);
-  rightWall.rotation.y=-Math.PI/2; rightWall.position.x=10; rightWall.position.y=5; scene.add(rightWall);
-
+  // Light
   const light=new THREE.DirectionalLight(0xffffff,1);
   light.position.set(5,10,5); scene.add(light);
 
-  // Gun
+  // Gun on right side
   gunMesh=createGunMesh(gunSelect.value);
-  gunMesh.position.set(0,-0.2,-0.5);
+  gunMesh.position.set(0.5,1.2,-0.5); // right side
   camera.add(gunMesh);
 
   // Event listeners
@@ -158,45 +143,34 @@ function init(){
 
 function createGunMesh(type){
   const group=new THREE.Group();
-  if(type==='ak'){
-    const barrel=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.7), new THREE.MeshStandardMaterial({color:0x333333}));
-    barrel.position.set(0,0,0.35);
-    const body=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.05,0.2), new THREE.MeshStandardMaterial({color:0x222222}));
-    body.position.set(0,-0.025,-0.1);
-    group.add(barrel); group.add(body);
-  } else {
-    const barrel=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.5), new THREE.MeshStandardMaterial({color:0x444444}));
-    barrel.position.set(0,0,0.25);
-    const handle=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.05,0.15), new THREE.MeshStandardMaterial({color:0x222222}));
-    handle.position.set(0,-0.025,-0.05);
-    group.add(barrel); group.add(handle);
-  }
+  const barrel=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,type==='ak'?0.7:0.5), new THREE.MeshStandardMaterial({color:0x333333}));
+  barrel.position.set(0,0,type==='ak'?0.35:0.25);
+  group.add(barrel);
   return group;
 }
 
 function shootBullet(){
-  const bullet=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), new THREE.MeshStandardMaterial({color:0xffff00}));
+  const bullet=new THREE.Mesh(new THREE.SphereGeometry(0.08,16,16), new THREE.MeshStandardMaterial({color:0xffff00}));
   bullet.position.copy(camera.position);
-  const dir=new THREE.Vector3();
-  camera.getWorldDirection(dir);
-  bullets.push({mesh:bullet, direction:dir});
+  bullets.push({mesh:bullet});
   scene.add(bullet);
 }
 
 function spawnEnemy(){
-  const enemy=new THREE.Mesh(new THREE.BoxGeometry(0.5,1,0.3), new THREE.MeshStandardMaterial({color:0xff0000}));
-  enemy.position.set((Math.random()-0.5)*8,0.5,camera.position.z-15);
+  const enemy=new THREE.Mesh(new THREE.SphereGeometry(0.3,16,16), new THREE.MeshStandardMaterial({color:0xff0000}));
+  enemy.position.set((Math.random()-0.5)*8,0.3,-15);
   enemies.push(enemy);
   scene.add(enemy);
 }
 
 function update(){
-  if(keys['a']) controls.moveRight(-playerSpeed);
-  if(keys['d']) controls.moveRight(playerSpeed);
+  if(keys['a']) camera.position.x -= playerSpeed;
+  if(keys['d']) camera.position.x += playerSpeed;
+  camera.position.x=Math.max(-8,Math.min(8,camera.position.x));
 
   bullets.forEach((b,i)=>{
-    b.mesh.position.addScaledVector(b.direction,0.3);
-    if(b.mesh.position.distanceTo(camera.position)>50){ scene.remove(b.mesh); bullets.splice(i,1); }
+    b.mesh.position.z -= 0.4;
+    if(b.mesh.position.z<-20){ scene.remove(b.mesh); bullets.splice(i,1); }
   });
 
   enemies.forEach((e,i)=>{
@@ -253,7 +227,7 @@ restartBtn.addEventListener('click', startGame);
 gunSelect.addEventListener('change', ()=>{
   camera.remove(gunMesh);
   gunMesh=createGunMesh(gunSelect.value);
-  gunMesh.position.set(0,-0.2,-0.5);
+  gunMesh.position.set(0.5,1.2,-0.5);
   camera.add(gunMesh);
 });
 
