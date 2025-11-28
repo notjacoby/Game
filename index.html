@@ -3,18 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D FPS Shooting Game</title>
+<title>3D FPS Shooting Game Improved</title>
 <style>
-body { margin:0; overflow:hidden; background:#222; font-family:sans-serif; }
+body { margin:0; overflow:hidden; background:#222; font-family:sans-serif; cursor:none; }
+#crosshair { position:absolute; left:50%; top:50%; width:20px; height:20px; margin-left:-10px; margin-top:-10px; pointer-events:none; z-index:10; }
+#crosshair::before, #crosshair::after { content:""; position:absolute; background:white; }
+#crosshair::before { left:50%; top:0; width:2px; height:100%; margin-left:-1px; }
+#crosshair::after { top:50%; left:0; width:100%; height:2px; margin-top:-1px; }
+
 #ui { position:absolute; top:10px; left:10px; color:white; z-index:10; }
 #start-screen, #game-over-screen {
   position:absolute; inset:0; background:rgba(0,0,0,0.85); color:white;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; z-index:10;
-  text-align:center;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; z-index:10; text-align:center;
 }
 button { padding:10px 20px; font-size:16px; border:none; border-radius:6px; cursor:pointer; background:#4caf50; color:white; }
 select { padding:5px; font-size:16px; }
-#mobile-controls { position:absolute; bottom:20px; width:100%; display:flex; justify-content:center; gap:20px; z-index:10; }
+#mobile-controls { position:absolute; bottom:20px; width:100%; display:flex; justify-content:center; gap:20px; z-index:10; display:none; }
 .control-btn { width:60px; height:60px; background:rgba(255,255,255,0.3); border-radius:50%; font-size:24px; text-align:center; line-height:60px; user-select:none; }
 .control-btn:active { background:rgba(255,255,255,0.6); }
 </style>
@@ -27,9 +31,11 @@ select { padding:5px; font-size:16px; }
   <div id="livesboard">Lives: 3</div>
 </div>
 
+<div id="crosshair"></div>
+
 <div id="start-screen">
   <h2>3D FPS Shooter</h2>
-  <p id="instructions">Move: A/D | Shoot: Left Click</p>
+  <p id="instructions">Move: A/D | Aim: Mouse | Shoot: Left Click</p>
   <label>Select Gun:
     <select id="gunSelect">
       <option value="ak">AK-47</option>
@@ -45,7 +51,7 @@ select { padding:5px; font-size:16px; }
   <button id="restart-btn">Restart</button>
 </div>
 
-<div id="mobile-controls" style="display:none;">
+<div id="mobile-controls">
   <div id="left-btn" class="control-btn">◀</div>
   <div id="shoot-btn" class="control-btn">●</div>
   <div id="right-btn" class="control-btn">▶</div>
@@ -56,10 +62,8 @@ select { padding:5px; font-size:16px; }
 <script>
 let scene, camera, renderer;
 let bullets=[], enemies=[];
-let playerSpeed=0.12; // slower movement
-let score=0, lives=3, level=1, running=false;
-let keys={}, isMobile=false;
-let lastEnemySpawn=0, ENEMY_INTERVAL=2500, ENEMY_SPEED=0.03;
+let playerSpeed=0.08, score=0, lives=3, level=1, running=false;
+let keys={}, isMobile=false, lastEnemySpawn=0, ENEMY_INTERVAL=2500, ENEMY_SPEED=0.02;
 let gunMesh;
 
 // UI
@@ -77,6 +81,9 @@ const leftBtn=document.getElementById('left-btn');
 const rightBtn=document.getElementById('right-btn');
 const shootBtn=document.getElementById('shoot-btn');
 const instructions=document.getElementById('instructions');
+const crosshair=document.getElementById('crosshair');
+
+let pitch=0, yaw=0;
 
 // Detect Mobile
 function detectMobile(){
@@ -85,24 +92,23 @@ function detectMobile(){
     mobileControls.style.display='flex';
     instructions.innerHTML="Use buttons to move & shoot";
   }else{
-    instructions.innerHTML="Move: A/D | Shoot: Left Click";
+    instructions.innerHTML="Move: A/D | Aim: Mouse | Shoot: Left Click";
   }
 }
 
-// Initialize Three.js Scene
+// Initialize Three.js
 function init(){
   scene=new THREE.Scene();
   scene.background=new THREE.Color(0x444444);
-  
+
   camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
   camera.position.set(0,1.5,5);
-  camera.lookAt(0,1.5,0);
   
   renderer=new THREE.WebGLRenderer({antialias:true});
   renderer.setSize(window.innerWidth,window.innerHeight);
   document.body.appendChild(renderer.domElement);
-  
-  // Room (floor + walls)
+
+  // Floor & walls
   const floorMat=new THREE.MeshStandardMaterial({color:0x555555});
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(20,20), floorMat);
   floor.rotation.x=-Math.PI/2; floor.position.y=0; scene.add(floor);
@@ -110,26 +116,28 @@ function init(){
   const wallMat=new THREE.MeshStandardMaterial({color:0x666666});
   const backWall=new THREE.Mesh(new THREE.PlaneGeometry(20,10), wallMat);
   backWall.position.z=-10; backWall.position.y=5; scene.add(backWall);
-  const leftWall=new THREE.Mesh(new THREE.PlaneGeometry(20,10), wallMat);
-  leftWall.rotation.y=Math.PI/2; leftWall.position.x=-10; leftWall.position.y=5; scene.add(leftWall);
-  const rightWall=new THREE.Mesh(new THREE.PlaneGeometry(20,10), wallMat);
-  rightWall.rotation.y=-Math.PI/2; rightWall.position.x=10; rightWall.position.y=5; scene.add(rightWall);
-  
+
   // Light
   const light=new THREE.DirectionalLight(0xffffff,1);
   light.position.set(5,10,5); scene.add(light);
-  
-  // Gun (forward-facing)
+
+  // Gun
   gunMesh=createGunMesh(gunSelect.value);
-  gunMesh.position.set(0,1.4,0.5); // in front of camera
+  gunMesh.position.set(0,1.4,0.5);
   camera.add(gunMesh);
   scene.add(camera);
-  
-  // Event Listeners
+
+  // Event listeners
   window.addEventListener('resize',()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); });
   window.addEventListener('keydown', e=>{ if(!isMobile) keys[e.key.toLowerCase()]=true; });
   window.addEventListener('keyup', e=>{ if(!isMobile) keys[e.key.toLowerCase()]=false; });
-  window.addEventListener('mousedown', e=>{ if(!running) return; if(!isMobile && e.button===0) shootBullet(); });
+  window.addEventListener('mousedown', e=>{ if(running && !isMobile && e.button===0) shootBullet(); });
+  window.addEventListener('mousemove', e=>{ if(running && !isMobile && document.pointerLockElement===renderer.domElement){
+    yaw -= e.movementX*0.002;
+    pitch -= e.movementY*0.002;
+    pitch=Math.max(-Math.PI/2, Math.min(Math.PI/2,pitch));
+    camera.rotation.set(pitch,yaw,0);
+  }});
 
   leftBtn.addEventListener('touchstart',()=>keys['a']=true);
   leftBtn.addEventListener('touchend',()=>keys['a']=false);
@@ -138,7 +146,7 @@ function init(){
   shootBtn.addEventListener('touchstart',()=>shootBullet());
 }
 
-// Create forward-facing gun
+// Create Gun
 function createGunMesh(type){
   const group=new THREE.Group();
   if(type==='ak'){
@@ -147,7 +155,7 @@ function createGunMesh(type){
     const body=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.05,0.2), new THREE.MeshStandardMaterial({color:0x222222}));
     body.position.set(0,-0.025,-0.1);
     group.add(barrel); group.add(body);
-  } else { // Deagle
+  } else {
     const barrel=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.5), new THREE.MeshStandardMaterial({color:0x444444}));
     barrel.position.set(0,0,0.25);
     const handle=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.05,0.15), new THREE.MeshStandardMaterial({color:0x222222}));
@@ -157,7 +165,7 @@ function createGunMesh(type){
   return group;
 }
 
-// Shoot bullet
+// Shoot
 function shootBullet(){
   const bullet=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), new THREE.MeshStandardMaterial({color:0xffff00}));
   bullet.position.copy(camera.position);
@@ -165,7 +173,7 @@ function shootBullet(){
   scene.add(bullet);
 }
 
-// Spawn enemy in front
+// Spawn enemy
 function spawnEnemy(){
   const enemy=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.5), new THREE.MeshStandardMaterial({color:0xff0000}));
   enemy.position.set((Math.random()-0.5)*8,0.25,-15);
@@ -173,21 +181,19 @@ function spawnEnemy(){
   scene.add(enemy);
 }
 
-// Update game logic
+// Update
 function update(){
   if(keys['a']) camera.position.x -= playerSpeed;
   if(keys['d']) camera.position.x += playerSpeed;
   camera.position.x=Math.max(-8,Math.min(8,camera.position.x));
 
-  // Update bullets
   bullets.forEach((b,i)=>{
     b.mesh.position.addScaledVector(b.direction,0.3);
     if(b.mesh.position.z<-20 || b.mesh.position.z>10){ scene.remove(b.mesh); bullets.splice(i,1); }
   });
 
-  // Update enemies
   enemies.forEach((e,i)=>{
-    e.position.z += ENEMY_SPEED; // toward player
+    e.position.z += ENEMY_SPEED;
     bullets.forEach((b,j)=>{
       if(e.position.distanceTo(b.mesh.position)<0.5){
         scene.remove(e); enemies.splice(i,1);
@@ -215,7 +221,7 @@ function animate(){
   renderer.render(scene,camera);
 }
 
-// Start / End Game
+// Start / End
 function startGame(){
   detectMobile();
   if(!scene) init();
@@ -227,6 +233,7 @@ function startGame(){
   startScreen.style.display='none';
   gameOverScreen.style.display='none';
   camera.position.set(0,1.5,5);
+  if(!isMobile) renderer.domElement.requestPointerLock();
   animate();
 }
 
@@ -247,6 +254,5 @@ gunSelect.addEventListener('change', ()=>{
 
 detectMobile();
 </script>
-
 </body>
 </html>
