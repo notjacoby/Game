@@ -23,4 +23,414 @@
   .arena{background:linear-gradient(180deg,#f5fbff 0%, #eaf6ff 100%);border-radius:12px;padding:12px;position:relative;min-height:480px;overflow:hidden}
   .status{display:flex;gap:10px;align-items:center;margin-bottom:10px}
   .pill{background:#fff;border-radius:10px;padding:8px 12px;font-weight:700;color:var(--blue);box-shadow:0 6px 18px rgba(100,140,255,0.06)}
-  .drop-zone{position:absolute;right:22px;bottom:22px;width:120px;height:120px;border-radius:18px;border:3px dashed #8ecbff;display:flex;align-
+  .drop-zone{position:absolute;right:22px;bottom:22px;width:120px;height:120px;border-radius:18px;border:3px dashed #8ecbff;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffffff,#dff3ff);transition:transform .12s,background .12s}
+  .drop-zone.active{transform:scale(1.06);background:linear-gradient(180deg,#fff0fb,#ffdff3)}
+  .drop-zone .label{font-weight:800;color:var(--blue);text-align:center}
+  /* hearts */
+  .heart{position:absolute;width:64px;height:64px;display:flex;align-items:center;justify-content:center;font-size:36px;cursor:grab;user-select:none;touch-action:none;transition:transform .08s}
+  .hud{display:flex;flex-direction:column;gap:12px;padding:12px}
+  .panel{background:linear-gradient(180deg,#fff,#f7faff);padding:16px;border-radius:12px;box-shadow:0 8px 20px rgba(30,80,150,0.04)}
+  .big{font-size:36px;color:var(--blue);font-weight:800;text-align:center}
+  .small{color:#4b5a83;font-weight:700;text-align:center}
+  .start-screen{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0.92),rgba(255,255,255,0.86));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:30}
+  .play-btn{font-size:20px;padding:12px 22px;border-radius:14px}
+  .footer{padding:12px 18px;color:#557;display:flex;align-items:center;justify-content:space-between}
+  .confetti{position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:9999}
+  /* responsive */
+  @media(max-width:880px){
+    main{grid-template-columns:1fr; padding:12px}
+    .drop-zone{right:12px;bottom:12px}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" aria-live="polite">
+      <header>
+        <h1>Collect the Hearts</h1>
+        <div class="controls">
+          <div class="small pill" id="timeDisplay">Time: 30</div>
+          <div class="small pill" id="scoreDisplay">Score: 0</div>
+          <button id="restartBtn" class="ghost">Restart</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="arena" id="arena" aria-label="Game arena">
+          <!-- start overlay -->
+          <div class="start-screen" id="startScreen">
+            <h2 style="font-family:Pacifico;margin:0;color:var(--blue);font-size:34px">Welcome!</h2>
+            <p style="margin:0;color:#3b4b78;font-weight:700">Drag hearts into the basket. Collect as many as you can in 30 seconds!</p>
+            <button id="startBtn" class="play-btn">Start Game</button>
+            <small style="color:#666;margin-top:6px">Works on mouse & touch</small>
+          </div>
+
+          <!-- dynamic hearts will appear here -->
+          <div id="heartsWrap"></div>
+
+          <!-- drop/basket zone -->
+          <div class="drop-zone" id="dropZone" aria-hidden="false">
+            <div style="text-align:center">
+              <div style="font-size:28px">🧺</div>
+              <div class="label">Basket</div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="hud">
+          <div class="panel">
+            <div class="small">Score</div>
+            <div class="big" id="scorePanel">0</div>
+          </div>
+
+          <div class="panel">
+            <div class="small">Time Left</div>
+            <div class="big" id="timePanel">30</div>
+          </div>
+
+          <div class="panel">
+            <div class="small">Level</div>
+            <div class="big" id="levelPanel">1</div>
+          </div>
+
+          <div class="panel" style="text-align:center">
+            <div style="font-weight:700;color:var(--blue)">Tip</div>
+            <div style="color:#556">Drag hearts into the basket quickly — hearts spawn faster each level.</div>
+          </div>
+        </aside>
+      </main>
+
+      <div class="footer">
+        <div style="font-weight:700;color:#3b4b78">Made with ❤️ for Yesha</div>
+        <div style="font-size:13px;color:#789">Drag / Touch to play</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- confetti canvas -->
+  <canvas id="confettiCanvas" class="confetti" style="display:none"></canvas>
+
+<script>
+/* ---------- Game variables ---------- */
+const arena = document.getElementById('arena');
+const heartsWrap = document.getElementById('heartsWrap');
+const dropZone = document.getElementById('dropZone');
+const startScreen = document.getElementById('startScreen');
+const startBtn = document.getElementById('startBtn');
+const restartBtn = document.getElementById('restartBtn');
+
+const scorePanel = document.getElementById('scorePanel');
+const timePanel = document.getElementById('timePanel');
+const levelPanel = document.getElementById('levelPanel');
+
+let score = 0, timeLeft = 30, level = 1;
+let gameTimer = null, spawnTimer = null;
+let running = false;
+
+/* ---------- Settings ---------- */
+const GAME_LENGTH = 30;       // seconds
+const INITIAL_SPAWN_MS = 1200; // initial spawn frequency
+const SPAWN_DECREASE = 80;    // spawn faster per level
+const MAX_LEVEL = 6;
+
+/* ---------- Utility: random position inside arena ---------- */
+function rand(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function arenaRect(){ return arena.getBoundingClientRect(); }
+
+/* ---------- Create a heart element ---------- */
+function spawnHeart() {
+  if (!running) return;
+  const rect = arenaRect();
+  const heart = document.createElement('div');
+  heart.className = 'heart';
+  heart.innerHTML = '❤';
+  const size = 56;
+  // spawn somewhere not overlapping the drop zone area
+  const left = rand(12, Math.max(12, rect.width - size - 12));
+  const top = rand(60, Math.max(60, rect.height - size - 40));
+  heart.style.left = left + 'px';
+  heart.style.top = top + 'px';
+  heart.style.fontSize = '34px';
+  heart.style.willChange = 'transform,left,top';
+  heartsWrap.appendChild(heart);
+
+  makeDraggable(heart);
+  // remove after some time if not collected
+  setTimeout(()=> {
+    if (heart && heart.parentElement) {
+      heart.remove();
+    }
+  }, 9000 - (level*700));
+}
+
+/* ---------- Drag / Touch support for heart ---------- */
+function makeDraggable(el) {
+  let dragging = false, offsetX=0, offsetY=0;
+  el.style.touchAction = 'none';
+
+  // Mouse
+  el.addEventListener('mousedown', startDrag);
+  // Touch
+  el.addEventListener('touchstart', (e)=> startDrag(e.touches[0]), {passive:false});
+
+  function startDrag(e){
+    e.preventDefault && e.preventDefault();
+    dragging = true;
+    el.style.transition = 'transform .08s';
+    el.style.zIndex = 1000;
+    offsetX = e.clientX - el.offsetLeft;
+    offsetY = e.clientY - el.offsetTop;
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', endDrag);
+    document.addEventListener('touchmove', onTouchMove, {passive:false});
+    document.addEventListener('touchend', endDrag);
+  }
+  function onMove(e){
+    if(!dragging) return;
+    const x = e.clientX - offsetX;
+    const y = e.clientY - offsetY;
+    el.style.left = Math.max(6, Math.min(x, arenaRect().width - el.offsetWidth - 6)) + 'px';
+    el.style.top  = Math.max(36, Math.min(y, arenaRect().height - el.offsetHeight - 6)) + 'px';
+    // visual feedback when over drop zone
+    checkOverlap(el);
+  }
+  function onTouchMove(e){
+    if(!dragging) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    onMove(t);
+  }
+  function endDrag(e){
+    dragging = false;
+    el.style.zIndex = 2;
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', endDrag);
+    document.removeEventListener('touchmove', onTouchMove);
+    document.removeEventListener('touchend', endDrag);
+    // final check: if dropped in drop zone => collect
+    if (isOverDrop(el)) {
+      collectHeart(el);
+    } else {
+      dropZone.classList.remove('active');
+      // little nudge back effect
+      el.style.transform = 'scale(0.98)';
+      setTimeout(()=> el.style.transform = '', 140);
+    }
+  }
+}
+
+/* ---------- Collision detection ---------- */
+function isOverDrop(el){
+  const a = el.getBoundingClientRect();
+  const b = dropZone.getBoundingClientRect();
+  const overlapX = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+  const overlapY = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+  const area = overlapX * overlapY;
+  // require at least some area overlap
+  return area > 400;
+}
+
+function checkOverlap(el){
+  if(isOverDrop(el)) dropZone.classList.add('active');
+  else dropZone.classList.remove('active');
+}
+
+/* ---------- Collect heart ---------- */
+function collectHeart(el){
+  // play small animation and remove
+  el.style.transform = 'scale(0.6) rotate(-20deg)';
+  el.style.opacity = '0';
+  setTimeout(()=> el.remove(), 180);
+
+  // increment score
+  score += 10;
+  scorePanel.textContent = score;
+  // quick pop on basket
+  dropZone.style.transform = 'scale(1.08)';
+  setTimeout(()=> dropZone.style.transform = '', 120);
+}
+
+/* ---------- Game loop: spawn hearts ---------- */
+function scheduleSpawns(){
+  clearInterval(spawnTimer);
+  const spawnMs = Math.max(300, INITIAL_SPAWN_MS - (level-1)*SPAWN_DECREASE);
+  spawnTimer = setInterval(()=> {
+    // spawn 1-2 hearts depending on level
+    const n = (level >= 4)? (Math.random() < 0.6 ? 2 : 1) : 1;
+    for(let i=0;i<n;i++) spawnHeart();
+  }, spawnMs);
+}
+
+/* ---------- Timer ---------- */
+function startTimer(){
+  clearInterval(gameTimer);
+  timeLeft = GAME_LENGTH;
+  timePanel.textContent = timeLeft;
+  gameTimer = setInterval(()=> {
+    timeLeft--;
+    timePanel.textContent = timeLeft;
+    document.getElementById('timeDisplay').textContent = 'Time: ' + timeLeft;
+    if(timeLeft <= 0){
+      endGame();
+    }
+  }, 1000);
+}
+
+/* ---------- Start / End / Restart ---------- */
+function startGame(){
+  // reset
+  score = 0; level = 1;
+  scorePanel.textContent = score;
+  levelPanel.textContent = level;
+  document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
+  startScreen.style.display = 'none';
+  running = true;
+  startTimer();
+  scheduleSpawns();
+}
+
+function endGame(){
+  running = false;
+  clearInterval(spawnTimer);
+  clearInterval(gameTimer);
+  // remove remaining hearts
+  heartsWrap.querySelectorAll('.heart').forEach(h => h.remove());
+  dropZone.classList.remove('active');
+  // show result overlay inside startScreen (reuse)
+  startScreen.style.display = 'flex';
+  startScreen.querySelector('h2').textContent = 'Time’s up!';
+  startScreen.querySelector('p').textContent = 'Your score: ' + score + ' — Nice job!';
+  startScreen.querySelector('#startBtn').textContent = 'Play Again';
+  // confetti celebration
+  runConfetti();
+}
+
+function restartGame(){
+  // reset overlay text
+  startScreen.querySelector('h2').textContent = 'Welcome!';
+  startScreen.querySelector('p').textContent = 'Drag hearts into the basket. Collect as many as you can in 30 seconds!';
+  startScreen.querySelector('#startBtn').textContent = 'Start Game';
+  score = 0; level = 1;
+  scorePanel.textContent = score;
+  levelPanel.textContent = level;
+  document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
+  startScreen.style.display = 'flex';
+  running = false;
+  clearInterval(spawnTimer);
+  clearInterval(gameTimer);
+  heartsWrap.innerHTML = '';
+  confettiOff();
+}
+
+/* ---------- Level up logic (based on score) ---------- */
+function checkLevelUp(){
+  const newLevel = Math.min(MAX_LEVEL, Math.floor(score/50) + 1);
+  if(newLevel !== level){
+    level = newLevel;
+    levelPanel.textContent = level;
+    scheduleSpawns();
+  }
+}
+
+/* ---------- Confetti (simple canvas) ---------- */
+const confettiCanvas = document.getElementById('confettiCanvas');
+const confettiCtx = confettiCanvas.getContext && confettiCanvas.getContext('2d');
+let confettiPieces=[], confettiAnim=null;
+function runConfetti(){
+  if(!confettiCtx) return;
+  confettiCanvas.style.display = 'block';
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+  confettiPieces = [];
+  const cols = ['#89f7f9','#ffb6d5','#d1aaff','#fff6a0','#caffb9'];
+  for(let i=0;i<120;i++){
+    confettiPieces.push({
+      x: Math.random()*confettiCanvas.width,
+      y: Math.random()*confettiCanvas.height - confettiCanvas.height,
+      r: Math.random()*8+4,
+      color: cols[Math.floor(Math.random()*cols.length)],
+      vx: (Math.random()-0.5)*2,
+      vy: Math.random()*3+2,
+      rot: Math.random()*360
+    });
+  }
+  let frames = 0;
+  function frame(){
+    frames++;
+    confettiCtx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+    confettiPieces.forEach(p=>{
+      p.x += p.vx; p.y += p.vy; p.rot += p.vx*5;
+      confettiCtx.save();
+      confettiCtx.translate(p.x,p.y);
+      confettiCtx.rotate(p.rot*Math.PI/180);
+      confettiCtx.fillStyle = p.color;
+      confettiCtx.fillRect(-p.r/2, -p.r/2, p.r, p.r*1.6);
+      confettiCtx.restore();
+    });
+    if(frames < 200) confettiAnim = requestAnimationFrame(frame);
+    else confettiOff();
+  }
+  frame();
+}
+function confettiOff(){
+  if(confettiAnim) cancelAnimationFrame(confettiAnim);
+  confettiPieces=[];
+  if(confettiCanvas) confettiCanvas.style.display = 'none';
+}
+
+/* ---------- UI events ---------- */
+startBtn.addEventListener('click', () => {
+  // when starting first time, reset button text maybe
+  startGame();
+  // reset overlay content (in case reusing)
+  startScreen.querySelector('h2').textContent = 'Good luck!';
+  startScreen.querySelector('p').textContent = '';
+  startScreen.style.display = 'none';
+});
+
+restartBtn.addEventListener('click', () => {
+  restartGame();
+});
+
+/* ---------- Periodic tasks ---------- */
+setInterval(()=> {
+  // keep "Score" display consistent
+  document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
+  checkLevelUp();
+}, 300);
+
+/* ---------- Accessibility / window resize ---------- */
+window.addEventListener('resize', ()=> {
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+});
+
+/* ---------- Friendly auto-spawn while waiting (visual) ---------- */
+let idleSpawner = setInterval(()=> {
+  if(!running){
+    // show one small heart drifting
+    const rect = arenaRect();
+    const el = document.createElement('div'); el.className='heart'; el.style.opacity='0.85'; el.innerHTML='❤';
+    el.style.left = (rect.width/2 - 28 + rand(-120,120)) + 'px';
+    el.style.top = (rect.height/2 - 28 + rand(-80,80)) + 'px';
+    el.style.transform = 'scale(0.9) rotate(-6deg)';
+    heartsWrap.appendChild(el);
+    setTimeout(()=> el.remove(), 1600);
+  }
+}, 1100);
+
+/* ---------- Game tick to spawn initial hearts while running ---------- */
+(function gameTicker(){
+  setInterval(()=> {
+    if(running){
+      spawnHeart();
+      // occasionally spawn extra
+      if(Math.random() < 0.2) spawnHeart();
+    }
+  }, 900);
+})();
+
+</script>
+</body>
+</html>
+flex;align-
