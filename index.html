@@ -6,343 +6,285 @@
 <title>Collect the Hearts — Thankful Game</title>
 <link href="https://fonts.googleapis.com/css?family=Pacifico|Poppins:400,700&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg1:#67b9ff; --bg2:#c6a1ff; --blue:#3D6CA6; --pink:#ffb6d5; --card:#f8faff;
-  }
-  *{box-sizing:border-box}
-  body,html{height:100%;margin:0;font-family:'Poppins',sans-serif;background:linear-gradient(135deg,var(--bg1),var(--bg2));-webkit-font-smoothing:antialiased}
-  .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-  .card{background:rgba(255,255,255,0.95);width:980px;max-width:100%;border-radius:18px;box-shadow:0 20px 50px rgba(20,60,120,0.12);overflow:hidden}
-  header{padding:28px 28px 12px;display:flex;align-items:center;gap:16px}
-  h1{font-family:'Pacifico',cursive;margin:0;color:var(--blue);font-size:28px}
-  .controls{margin-left:auto;display:flex;gap:10px;align-items:center}
-  button{background:linear-gradient(90deg,var(--bg1),var(--bg2));color:white;border:0;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(100,140,255,0.15)}
-  button.ghost{background:transparent;color:var(--blue);box-shadow:none;border:2px solid rgba(61,108,166,0.12)}
-  main{display:grid;grid-template-columns:1fr 320px;gap:18px;padding:18px}
-  /* Game area */
-  .arena{background:linear-gradient(180deg,#f5fbff 0%, #eaf6ff 100%);border-radius:12px;padding:12px;position:relative;min-height:480px;overflow:hidden}
-  .status{display:flex;gap:10px;align-items:center;margin-bottom:10px}
-  .pill{background:#fff;border-radius:10px;padding:8px 12px;font-weight:700;color:var(--blue);box-shadow:0 6px 18px rgba(100,140,255,0.06)}
-  .drop-zone{position:absolute;right:22px;bottom:22px;width:120px;height:120px;border-radius:18px;border:3px dashed #8ecbff;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffffff,#dff3ff);transition:transform .12s,background .12s}
-  .drop-zone.active{transform:scale(1.06);background:linear-gradient(180deg,#fff0fb,#ffdff3)}
-  .drop-zone .label{font-weight:800;color:var(--blue);text-align:center}
-  /* hearts */
-  .heart{position:absolute;width:64px;height:64px;display:flex;align-items:center;justify-content:center;font-size:36px;cursor:grab;user-select:none;touch-action:none;transition:transform .08s}
-  .hud{display:flex;flex-direction:column;gap:12px;padding:12px}
-  .panel{background:linear-gradient(180deg,#fff,#f7faff);padding:16px;border-radius:12px;box-shadow:0 8px 20px rgba(30,80,150,0.04)}
-  .big{font-size:36px;color:var(--blue);font-weight:800;text-align:center}
-  .small{color:#4b5a83;font-weight:700;text-align:center}
-  .start-screen{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0.92),rgba(255,255,255,0.86));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:30}
-  .play-btn{font-size:20px;padding:12px 22px;border-radius:14px}
-  .footer{padding:12px 18px;color:#557;display:flex;align-items:center;justify-content:space-between}
-  .confetti{position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:9999}
-  /* responsive */
-  @media(max-width:880px){
-    main{grid-template-columns:1fr; padding:12px}
-    .drop-zone{right:12px;bottom:12px}
-  }
+:root{
+  --bg1:#67b9ff; --bg2:#c6a1ff; --blue:#3D6CA6; --pink:#ffb6d5; --card:#f8faff;
+}
+*{box-sizing:border-box}
+body,html{height:100%;margin:0;font-family:'Poppins',sans-serif;background:linear-gradient(135deg,var(--bg1),var(--bg2));-webkit-font-smoothing:antialiased}
+.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{background:rgba(255,255,255,0.95);width:980px;max-width:100%;border-radius:18px;box-shadow:0 20px 50px rgba(20,60,120,0.12);overflow:hidden}
+header{padding:28px 28px 12px;display:flex;align-items:center;gap:16px}
+h1{font-family:'Pacifico',cursive;margin:0;color:var(--blue);font-size:28px}
+.controls{margin-left:auto;display:flex;gap:10px;align-items:center}
+button{background:linear-gradient(90deg,var(--bg1),var(--bg2));color:white;border:0;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(100,140,255,0.15)}
+button.ghost{background:transparent;color:var(--blue);box-shadow:none;border:2px solid rgba(61,108,166,0.12)}
+main{display:grid;grid-template-columns:1fr 320px;gap:18px;padding:18px}
+.arena{background:linear-gradient(180deg,#f5fbff 0%, #eaf6ff 100%);border-radius:12px;padding:12px;position:relative;min-height:480px;overflow:hidden}
+.pill{background:#fff;border-radius:10px;padding:8px 12px;font-weight:700;color:var(--blue);box-shadow:0 6px 18px rgba(100,140,255,0.06)}
+.drop-zone{position:absolute;right:22px;bottom:22px;width:120px;height:120px;border-radius:18px;border:3px dashed #8ecbff;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffffff,#dff3ff);transition:transform .12s,background .12s}
+.drop-zone.active{transform:scale(1.06);background:linear-gradient(180deg,#fff0fb,#ffdff3)}
+.drop-zone .label{font-weight:800;color:var(--blue);text-align:center}
+.heart{position:absolute;width:64px;height:64px;display:flex;align-items:center;justify-content:center;font-size:36px;cursor:grab;user-select:none;touch-action:none;transition:transform .08s}
+.hud{display:flex;flex-direction:column;gap:12px;padding:12px}
+.panel{background:linear-gradient(180deg,#fff,#f7faff);padding:16px;border-radius:12px;box-shadow:0 8px 20px rgba(30,80,150,0.04)}
+.big{font-size:36px;color:var(--blue);font-weight:800;text-align:center}
+.small{color:#4b5a83;font-weight:700;text-align:center}
+.start-screen{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0.92),rgba(255,255,255,0.86));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:30}
+.play-btn{font-size:20px;padding:12px 22px;border-radius:14px}
+.footer{padding:12px 18px;color:#557;display:flex;align-items:center;justify-content:space-between}
+.confetti{position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:9999}
+@media(max-width:880px){
+  main{grid-template-columns:1fr; padding:12px}
+  .drop-zone{right:12px;bottom:12px}
+}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card" aria-live="polite">
-      <header>
-        <h1>Collect the Hearts</h1>
-        <div class="controls">
-          <div class="small pill" id="timeDisplay">Time: 30</div>
-          <div class="small pill" id="scoreDisplay">Score: 0</div>
-          <button id="restartBtn" class="ghost">Restart</button>
-        </div>
-      </header>
-
-      <main>
-        <section class="arena" id="arena" aria-label="Game arena">
-          <!-- start overlay -->
-          <div class="start-screen" id="startScreen">
-            <h2 style="font-family:Pacifico;margin:0;color:var(--blue);font-size:34px">Welcome!</h2>
-            <p style="margin:0;color:#3b4b78;font-weight:700">Drag hearts into the basket. Collect as many as you can in 30 seconds!</p>
-            <button id="startBtn" class="play-btn">Start Game</button>
-            <small style="color:#666;margin-top:6px">Works on mouse & touch</small>
-          </div>
-
-          <!-- dynamic hearts will appear here -->
-          <div id="heartsWrap"></div>
-
-          <!-- drop/basket zone -->
-          <div class="drop-zone" id="dropZone" aria-hidden="false">
-            <div style="text-align:center">
-              <div style="font-size:28px">🧺</div>
-              <div class="label">Basket</div>
-            </div>
-          </div>
-        </section>
-
-        <aside class="hud">
-          <div class="panel">
-            <div class="small">Score</div>
-            <div class="big" id="scorePanel">0</div>
-          </div>
-
-          <div class="panel">
-            <div class="small">Time Left</div>
-            <div class="big" id="timePanel">30</div>
-          </div>
-
-          <div class="panel">
-            <div class="small">Level</div>
-            <div class="big" id="levelPanel">1</div>
-          </div>
-
-          <div class="panel" style="text-align:center">
-            <div style="font-weight:700;color:var(--blue)">Tip</div>
-            <div style="color:#556">Drag hearts into the basket quickly — hearts spawn faster each level.</div>
-          </div>
-        </aside>
-      </main>
-
-      <div class="footer">
-        <div style="font-weight:700;color:#3b4b78">Made with ❤️ for Yesha</div>
-        <div style="font-size:13px;color:#789">Drag / Touch to play</div>
+<div class="wrap">
+  <div class="card" aria-live="polite">
+    <header>
+      <h1>Collect the Hearts</h1>
+      <div class="controls">
+        <div class="small pill" id="timeDisplay">Time: 30</div>
+        <div class="small pill" id="scoreDisplay">Score: 0</div>
+        <button id="restartBtn" class="ghost">Restart</button>
       </div>
+    </header>
+    <main>
+      <section class="arena" id="arena" aria-label="Game arena">
+        <div class="start-screen" id="startScreen">
+          <h2 style="font-family:Pacifico;margin:0;color:var(--blue);font-size:34px">Welcome!</h2>
+          <p style="margin:0;color:#3b4b78;font-weight:700">Drag hearts into the basket. Collect as many as you can in 30 seconds!</p>
+          <button id="startBtn" class="play-btn">Start Game</button>
+          <small style="color:#666;margin-top:6px">Works on mouse & touch</small>
+        </div>
+        <div id="heartsWrap"></div>
+        <div class="drop-zone" id="dropZone" aria-hidden="false">
+          <div style="text-align:center">
+            <div style="font-size:28px">🧺</div>
+            <div class="label">Basket</div>
+          </div>
+        </div>
+      </section>
+      <aside class="hud">
+        <div class="panel">
+          <div class="small">Score</div>
+          <div class="big" id="scorePanel">0</div>
+        </div>
+        <div class="panel">
+          <div class="small">Time Left</div>
+          <div class="big" id="timePanel">30</div>
+        </div>
+        <div class="panel">
+          <div class="small">Level</div>
+          <div class="big" id="levelPanel">1</div>
+        </div>
+        <div class="panel" style="text-align:center">
+          <div style="font-weight:700;color:var(--blue)">Tip</div>
+          <div style="color:#556">Drag hearts into the basket quickly — hearts spawn faster each level.</div>
+        </div>
+      </aside>
+    </main>
+    <div class="footer">
+      <div style="font-weight:700;color:#3b4b78">Made with ❤️ for Yesha</div>
+      <div style="font-size:13px;color:#789">Drag / Touch to play</div>
     </div>
   </div>
-
-  <!-- confetti canvas -->
-  <canvas id="confettiCanvas" class="confetti" style="display:none"></canvas>
-
+</div>
+<canvas id="confettiCanvas" class="confetti" style="display:none"></canvas>
 <script>
-/* ---------- Game variables ---------- */
 const arena = document.getElementById('arena');
 const heartsWrap = document.getElementById('heartsWrap');
 const dropZone = document.getElementById('dropZone');
 const startScreen = document.getElementById('startScreen');
-const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
-
 const scorePanel = document.getElementById('scorePanel');
 const timePanel = document.getElementById('timePanel');
 const levelPanel = document.getElementById('levelPanel');
 
 let score = 0, timeLeft = 30, level = 1;
-let gameTimer = null, spawnTimer = null;
-let running = false;
+let gameTimer=null, spawnTimer=null, running=false;
 
-const GAME_LENGTH = 30;       // seconds
-const INITIAL_SPAWN_MS = 1200; // initial spawn frequency
-const SPAWN_DECREASE = 80;    // spawn faster per level
-const MAX_LEVEL = 6;
+const GAME_LENGTH=30, INITIAL_SPAWN_MS=1200, SPAWN_DECREASE=80, MAX_LEVEL=6;
 
-function rand(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
-function arenaRect(){ return arena.getBoundingClientRect(); }
+function rand(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+function arenaRect(){return arena.getBoundingClientRect();}
 
-function spawnHeart() {
-  if (!running) return;
+function spawnHeart(){
+  if(!running) return;
   const rect = arenaRect();
   const heart = document.createElement('div');
-  heart.className = 'heart';
-  heart.innerHTML = '❤';
-  const size = 56;
-  const left = rand(12, Math.max(12, rect.width - size - 12));
-  const top = rand(60, Math.max(60, rect.height - size - 40));
-  heart.style.left = left + 'px';
-  heart.style.top = top + 'px';
-  heart.style.fontSize = '34px';
-  heart.style.willChange = 'transform,left,top';
-  heartsWrap.appendChild(heart);
-  makeDraggable(heart);
-  setTimeout(()=> { if (heart && heart.parentElement) heart.remove(); }, 9000 - (level*700));
+  heart.className='heart'; heart.innerHTML='❤';
+  const size=56;
+  const left=rand(12,Math.max(12,rect.width-size-12));
+  const top=rand(60,Math.max(60,rect.height-size-40));
+  heart.style.left=left+'px'; heart.style.top=top+'px'; heart.style.fontSize='34px'; heart.style.willChange='transform,left,top';
+  heartsWrap.appendChild(heart); makeDraggable(heart);
+  setTimeout(()=>{if(heart.parentElement) heart.remove();},9000-(level*700));
 }
 
-function makeDraggable(el) {
-  let dragging = false, offsetX=0, offsetY=0;
-  el.style.touchAction = 'none';
-  el.addEventListener('mousedown', startDrag);
-  el.addEventListener('touchstart', (e)=> startDrag(e.touches[0]), {passive:false});
-
+function makeDraggable(el){
+  let dragging=false, offsetX=0, offsetY=0;
+  el.style.touchAction='none';
+  el.addEventListener('mousedown',startDrag);
+  el.addEventListener('touchstart',(e)=>startDrag(e.touches[0]),{passive:false});
   function startDrag(e){
-    e.preventDefault && e.preventDefault();
-    dragging = true;
-    el.style.transition = 'transform .08s';
-    el.style.zIndex = 1000;
-    offsetX = e.clientX - el.offsetLeft;
-    offsetY = e.clientY - el.offsetTop;
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', endDrag);
-    document.addEventListener('touchmove', onTouchMove, {passive:false});
-    document.addEventListener('touchend', endDrag);
+    e.preventDefault&&e.preventDefault();
+    dragging=true; el.style.transition='transform .08s'; el.style.zIndex=1000;
+    offsetX=e.clientX-el.offsetLeft; offsetY=e.clientY-el.offsetTop;
+    document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',endDrag);
+    document.addEventListener('touchmove',onTouchMove,{passive:false}); document.addEventListener('touchend',endDrag);
   }
   function onMove(e){
     if(!dragging) return;
-    const x = e.clientX - offsetX;
-    const y = e.clientY - offsetY;
-    el.style.left = Math.max(6, Math.min(x, arenaRect().width - el.offsetWidth - 6)) + 'px';
-    el.style.top  = Math.max(36, Math.min(y, arenaRect().height - el.offsetHeight - 6)) + 'px';
+    const x=e.clientX-offsetX, y=e.clientY-offsetY;
+    el.style.left=Math.max(6,Math.min(x,arenaRect().width-el.offsetWidth-6))+'px';
+    el.style.top=Math.max(36,Math.min(y,arenaRect().height-el.offsetHeight-6))+'px';
     checkOverlap(el);
   }
-  function onTouchMove(e){ if(!dragging) return; e.preventDefault(); onMove(e.touches[0]); }
-  function endDrag(e){
-    dragging = false;
-    el.style.zIndex = 2;
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', endDrag);
-    document.removeEventListener('touchmove', onTouchMove);
-    document.removeEventListener('touchend', endDrag);
-    if (isOverDrop(el)) collectHeart(el);
-    else { dropZone.classList.remove('active'); el.style.transform='scale(0.98)'; setTimeout(()=> el.style.transform='',140);}
+  function onTouchMove(e){ if(!dragging) return; e.preventDefault(); onMove(e.touches[0]);}
+  function endDrag(){
+    dragging=false; el.style.zIndex=2;
+    document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',endDrag);
+    document.removeEventListener('touchmove',onTouchMove); document.removeEventListener('touchend',endDrag);
+    if(isOverDrop(el)) collectHeart(el);
+    else { dropZone.classList.remove('active'); el.style.transform='scale(0.98)'; setTimeout(()=>el.style.transform='',140);}
   }
 }
 
 function isOverDrop(el){
-  const a = el.getBoundingClientRect();
-  const b = dropZone.getBoundingClientRect();
-  const overlapX = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
-  const overlapY = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-  return (overlapX * overlapY) > 400;
+  const a=el.getBoundingClientRect(), b=dropZone.getBoundingClientRect();
+  const overlapX=Math.max(0,Math.min(a.right,b.right)-Math.max(a.left,b.left));
+  const overlapY=Math.max(0,Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top));
+  return (overlapX*overlapY)>400;
 }
 
-function checkOverlap(el){ if(isOverDrop(el)) dropZone.classList.add('active'); else dropZone.classList.remove('active'); }
+function checkOverlap(el){ if(isOverDrop(el)) dropZone.classList.add('active'); else dropZone.classList.remove('active');}
 
 function collectHeart(el){
-  el.style.transform = 'scale(0.6) rotate(-20deg)';
-  el.style.opacity = '0';
-  setTimeout(()=> el.remove(), 180);
-  score += 10;
-  scorePanel.textContent = score;
-  dropZone.style.transform = 'scale(1.08)';
-  setTimeout(()=> dropZone.style.transform='',120);
+  el.style.transform='scale(0.6) rotate(-20deg)'; el.style.opacity='0';
+  setTimeout(()=>el.remove(),180);
+  score+=10; scorePanel.textContent=score;
+  dropZone.style.transform='scale(1.08)'; setTimeout(()=>dropZone.style.transform='',120);
 }
 
 function scheduleSpawns(){
   clearInterval(spawnTimer);
-  const spawnMs = Math.max(300, INITIAL_SPAWN_MS - (level-1)*SPAWN_DECREASE);
-  spawnTimer = setInterval(()=> {
-    const n = (level >= 4)? (Math.random() < 0.6 ? 2 : 1) : 1;
+  const spawnMs=Math.max(300,INITIAL_SPAWN_MS-(level-1)*SPAWN_DECREASE);
+  spawnTimer=setInterval(()=>{
+    const n=(level>=4)?(Math.random()<0.6?2:1):1;
     for(let i=0;i<n;i++) spawnHeart();
-  }, spawnMs);
+  },spawnMs);
 }
 
 function startTimer(){
-  clearInterval(gameTimer);
-  timeLeft = GAME_LENGTH;
-  timePanel.textContent = timeLeft;
-  gameTimer = setInterval(()=> {
-    timeLeft--;
-    timePanel.textContent = timeLeft;
-    document.getElementById('timeDisplay').textContent = 'Time: ' + timeLeft;
-    if(timeLeft <= 0) endGame();
-  }, 1000);
+  clearInterval(gameTimer); timeLeft=GAME_LENGTH; timePanel.textContent=timeLeft;
+  gameTimer=setInterval(()=>{
+    timeLeft--; timePanel.textContent=timeLeft;
+    document.getElementById('timeDisplay').textContent='Time: '+timeLeft;
+    if(timeLeft<=0) endGame();
+  },1000);
 }
 
 function startGame(){
-  score = 0; level = 1;
-  scorePanel.textContent = score;
-  levelPanel.textContent = level;
-  document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
-  startScreen.style.display = 'none';
-  running = true;
-  startTimer();
-  scheduleSpawns();
+  score=0; level=1;
+  scorePanel.textContent=score; levelPanel.textContent=level;
+  document.getElementById('scoreDisplay').textContent='Score: '+score;
+  startScreen.style.display='none'; running=true;
+  startTimer(); scheduleSpawns();
 }
 
 function endGame(){
-  running = false;
-  clearInterval(spawnTimer);
-  clearInterval(gameTimer);
-  heartsWrap.querySelectorAll('.heart').forEach(h => h.remove());
-  dropZone.classList.remove('active');
-  startScreen.style.display = 'flex';
-  startScreen.querySelector('h2').textContent = 'Time’s up!';
-  startScreen.querySelector('p').textContent = 'Your score: ' + score + ' — Nice job!';
-  startScreen.querySelector('#startBtn').textContent = 'Play Again';
+  running=false; clearInterval(spawnTimer); clearInterval(gameTimer);
+  heartsWrap.querySelectorAll('.heart').forEach(h=>h.remove()); dropZone.classList.remove('active');
+  startScreen.style.display='flex'; startScreen.querySelector('h2').textContent="Time's up!";
+  startScreen.querySelector('p').textContent='Your score: '+score+' — Nice job!';
+  startScreen.querySelector('#startBtn').textContent='Play Again';
   runConfetti();
 }
 
 function restartGame(){
-  startScreen.querySelector('h2').textContent = 'Welcome!';
-  startScreen.querySelector('p').textContent = 'Drag hearts into the basket. Collect as many as you can in 30 seconds!';
-  startScreen.querySelector('#startBtn').textContent = 'Start Game';
-  score = 0; level = 1;
-  scorePanel.textContent = score;
-  levelPanel.textContent = level;
-  document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
-  startScreen.style.display = 'flex';
-  running = false;
-  clearInterval(spawnTimer);
-  clearInterval(gameTimer);
-  heartsWrap.innerHTML = '';
+  startScreen.querySelector('h2').textContent='Welcome!';
+  startScreen.querySelector('p').textContent='Drag hearts into the basket. Collect as many as you can in 30 seconds!';
+  startScreen.querySelector('#startBtn').textContent='Start Game';
+  score=0; level=1;
+  scorePanel.textContent=score; levelPanel.textContent=level;
+  document.getElementById('scoreDisplay').textContent='Score: '+score;
+  startScreen.style.display='flex'; running=false;
+  clearInterval(spawnTimer); clearInterval(gameTimer); heartsWrap.innerHTML='';
   confettiOff();
 }
 
 function checkLevelUp(){
-  const newLevel = Math.min(MAX_LEVEL, Math.floor(score/50) + 1);
-  if(newLevel !== level){ level = newLevel; levelPanel.textContent = level; scheduleSpawns();}
+  const newLevel=Math.min(MAX_LEVEL,Math.floor(score/50)+1);
+  if(newLevel!==level){ level=newLevel; levelPanel.textContent=level; scheduleSpawns(); }
 }
 
-const confettiCanvas = document.getElementById('confettiCanvas');
-const confettiCtx = confettiCanvas.getContext && confettiCanvas.getContext('2d');
+const confettiCanvas=document.getElementById('confettiCanvas');
+const confettiCtx=confettiCanvas.getContext && confettiCanvas.getContext('2d');
 let confettiPieces=[], confettiAnim=null;
+
 function runConfetti(){
   if(!confettiCtx) return;
-  confettiCanvas.style.display = 'block';
-  confettiCanvas.width = window.innerWidth;
-  confettiCanvas.height = window.innerHeight;
-  confettiPieces = [];
-  const cols = ['#89f7f9','#ffb6d5','#d1aaff','#fff6a0','#caffb9'];
+  confettiCanvas.style.display='block';
+  confettiCanvas.width=window.innerWidth; confettiCanvas.height=window.innerHeight;
+  confettiPieces=[];
+  const cols=['#89f7f9','#ffb6d5','#d1aaff','#fff6a0','#caffb9'];
   for(let i=0;i<120;i++){
-    confettiPieces.push({
-      x: Math.random()*confettiCanvas.width,
-      y: Math.random()*confettiCanvas.height - confettiCanvas.height,
-      r: Math.random()*8+4,
-      color: cols[Math.floor(Math.random()*cols.length)],
-      vx: (Math.random()-0.5)*2,
-      vy: Math.random()*3+2,
-      rot: Math.random()*360
-    });
+    confettiPieces.push({x:Math.random()*confettiCanvas.width,y:Math.random()*confettiCanvas.height-confettiCanvas.height,r:Math.random()*8+4,color:cols[Math.floor(Math.random()*cols.length)],vx:(Math.random()-0.5)*2,vy:Math.random()*3+2,rot:Math.random()*360});
   }
-  let frames = 0;
+  let frames=0;
   function frame(){
     frames++;
     confettiCtx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
     confettiPieces.forEach(p=>{
-      p.x += p.vx; p.y += p.vy; p.rot += p.vx*5;
+      p.x+=p.vx; p.y+=p.vy; p.rot+=p.vx*5;
       confettiCtx.save();
       confettiCtx.translate(p.x,p.y);
       confettiCtx.rotate(p.rot*Math.PI/180);
-      confettiCtx.fillStyle = p.color;
-      confettiCtx.fillRect(-p.r/2, -p.r/2, p.r, p.r*1.6);
+      confettiCtx.fillStyle=p.color;
+      confettiCtx.fillRect(-p.r/2,-p.r/2,p.r,p.r*1.6);
       confettiCtx.restore();
     });
-    if(frames < 200) confettiAnim = requestAnimationFrame(frame);
+    if(frames<200) confettiAnim=requestAnimationFrame(frame);
     else confettiOff();
   }
   frame();
 }
-function confettiOff(){
-  if(confettiAnim) cancelAnimationFrame(confettiAnim);
-  confettiPieces=[];
-  if(confettiCanvas) confettiCanvas.style.display = 'none';
-}
 
-restartBtn.addEventListener('click', restartGame);
+function confettiOff(){ if(confettiAnim) cancelAnimationFrame(confettiAnim); confettiPieces=[]; confettiCanvas.style.display='none'; }
 
-/* Periodic tasks */
-setInterval(()=> { document.getElementById('scoreDisplay').textContent = 'Score: ' + score; checkLevelUp(); }, 300);
+restartBtn.addEventListener('click',restartGame);
 
-/* Window resize */
-window.addEventListener('resize', ()=> { confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; });
+setInterval(()=>{ document.getElementById('scoreDisplay').textContent='Score: '+score; checkLevelUp(); },300);
+window.addEventListener('resize',()=>{ confettiCanvas.width=window.innerWidth; confettiCanvas.height=window.innerHeight; });
 
-/* Friendly idle hearts */
-let idleSpawner = setInterval(()=> {
+let idleSpawner=setInterval(()=>{
   if(!running){
-    const rect = arenaRect();
-    const el = document.createElement('div'); el.className='heart'; el.style.opacity='0.85'; el.innerHTML='❤';
-    el.style.left = (rect.width/2 - 28 + rand(-120,120)) + 'px';
-    el.style.top = (rect.height/2 - 28 + rand(-80,80)) + 'px';
-    el.style.transform = 'scale(0.9) rotate(-6deg)';
+    const rect=arenaRect();
+    const el=document.createElement('div'); el.className='heart'; el.style.opacity='0.85'; el.innerHTML='❤';
+    el.style.left=(rect.width/2-28+rand(-120,120))+'px';
+    el.style.top=(rect.height/2-28+rand(-80,80))+'px';
+    el.style.transform='scale(0.9) rotate(-6deg)';
     heartsWrap.appendChild(el);
-    setTimeout(()=> el.remove(), 1600);
+    setTimeout(()=>el.remove(),1600);
   }
-}, 1100);
+},1100);
 
 (function gameTicker(){
-  setInterval(()=> { if(running){ spawnHeart(); if(Math.random() < 0.2) spawn
+  setInterval(()=>{
+    if(running){
+      spawnHeart();
+      if(Math.random()<0.2) spawnHeart();
+    }
+  },900);
+})();
+
+// Auto-start game on page load
+window.addEventListener('load', ()=>{
+  startGame();
+  startScreen.style.display='none';
+});
+</script>
+</body>
+</html>
