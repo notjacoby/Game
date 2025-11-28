@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D FPS Shooter Simplified</title>
+<title>3D Shooter with 2D Gun</title>
 <style>
 body { margin:0; overflow:hidden; background:#222; font-family:sans-serif; }
 #ui { position:absolute; top:10px; left:10px; color:white; z-index:10; }
@@ -18,7 +18,7 @@ select { padding:5px; font-size:16px; }
 .control-btn { width:60px; height:60px; background:rgba(255,255,255,0.3); border-radius:50%; font-size:24px; text-align:center; line-height:60px; user-select:none; }
 .control-btn:active { background:rgba(255,255,255,0.6); }
 #crosshair {
-  position:absolute; top:50%; left:50%;
+  position:absolute; left:50%; top:50%;
   width:20px; height:20px;
   margin-left:-10px; margin-top:-10px;
   pointer-events:none;
@@ -31,6 +31,11 @@ select { padding:5px; font-size:16px; }
 }
 #crosshair::before { left:9px; top:0; width:2px; height:20px; }
 #crosshair::after { top:9px; left:0; width:20px; height:2px; }
+#gun2d {
+  position:absolute; right:10px; bottom:20px;
+  width:150px;
+  z-index:10;
+}
 </style>
 </head>
 <body>
@@ -42,6 +47,7 @@ select { padding:5px; font-size:16px; }
 </div>
 
 <div id="crosshair"></div>
+<img id="gun2d" src="https://i.imgur.com/8yU8n6q.png" alt="Gun" />
 
 <div id="start-screen">
   <h2>3D Shooter</h2>
@@ -123,11 +129,6 @@ function init(){
   const light=new THREE.DirectionalLight(0xffffff,1);
   light.position.set(5,10,5); scene.add(light);
 
-  // Gun on right side
-  gunMesh=createGunMesh(gunSelect.value);
-  gunMesh.position.set(0.5,1.2,-0.5); // right side
-  camera.add(gunMesh);
-
   // Event listeners
   window.addEventListener('resize',()=>{ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); });
   window.addEventListener('keydown', e=>{ if(!isMobile) keys[e.key.toLowerCase()]=true; });
@@ -141,17 +142,10 @@ function init(){
   shootBtn.addEventListener('touchstart',()=>shootBullet());
 }
 
-function createGunMesh(type){
-  const group=new THREE.Group();
-  const barrel=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,type==='ak'?0.7:0.5), new THREE.MeshStandardMaterial({color:0x333333}));
-  barrel.position.set(0,0,type==='ak'?0.35:0.25);
-  group.add(barrel);
-  return group;
-}
-
 function shootBullet(){
   const bullet=new THREE.Mesh(new THREE.SphereGeometry(0.08,16,16), new THREE.MeshStandardMaterial({color:0xffff00}));
-  bullet.position.copy(camera.position);
+  // Bullet spawns at crosshair height (enemies are at y=0.3)
+  bullet.position.set(camera.position.x,0.3,camera.position.z);
   bullets.push({mesh:bullet});
   scene.add(bullet);
 }
@@ -224,14 +218,8 @@ function endGame(){
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 
-gunSelect.addEventListener('change', ()=>{
-  camera.remove(gunMesh);
-  gunMesh=createGunMesh(gunSelect.value);
-  gunMesh.position.set(0.5,1.2,-0.5);
-  camera.add(gunMesh);
-});
-
 detectMobile();
 </script>
+
 </body>
 </html>
