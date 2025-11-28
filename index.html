@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D FPS Auto-Aim Game</title>
+<title>3D Auto-Aim Shooter</title>
 <style>
 body { margin:0; overflow:hidden; background:#222; font-family:sans-serif; }
 #ui { position:absolute; top:10px; left:10px; color:white; z-index:10; }
@@ -28,7 +28,7 @@ select { padding:5px; font-size:16px; }
 </div>
 
 <div id="start-screen">
-  <h2>3D FPS Shooter</h2>
+  <h2>3D Shooter</h2>
   <p id="instructions">Move: A/D | Shoot: Left Click</p>
   <label>Select Gun:
     <select id="gunSelect">
@@ -154,6 +154,11 @@ function createGunMesh(type){
     handle.position.set(0,-0.025,-0.05);
     group.add(barrel); group.add(handle);
   }
+  // Tip indicator
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.2,8), new THREE.MeshStandardMaterial({color:0xffff00}));
+  tip.position.set(0,0,0.8);
+  tip.rotation.x=Math.PI;
+  group.add(tip);
   return group;
 }
 
@@ -192,11 +197,7 @@ function updateGunAim(){
     }
   });
   if(closest){
-    const gunWorldPos=new THREE.Vector3();
-    gunMesh.getWorldPosition(gunWorldPos);
-    const dir=new THREE.Vector3().subVectors(closest.position,gunWorldPos).normalize();
-    const targetQuaternion=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),dir);
-    gunMesh.setRotationFromQuaternion(targetQuaternion);
+    gunMesh.lookAt(closest.position);
   }
 }
 
@@ -206,13 +207,11 @@ function update(){
   if(keys['d']) camera.position.x += playerSpeed;
   camera.position.x=Math.max(-8,Math.min(8,camera.position.x));
 
-  // Update bullets
   bullets.forEach((b,i)=>{
     b.mesh.position.addScaledVector(b.direction,0.3);
     if(b.mesh.position.z<-20 || b.mesh.position.z>10){ scene.remove(b.mesh); bullets.splice(i,1); }
   });
 
-  // Update enemies
   enemies.forEach((e,i)=>{
     e.position.z += ENEMY_SPEED;
     bullets.forEach((b,j)=>{
@@ -234,7 +233,7 @@ function update(){
   let newLevel=Math.floor(score/100)+1;
   if(newLevel>level){ level=newLevel; ENEMY_SPEED+=0.005; ENEMY_INTERVAL=Math.max(500,ENEMY_INTERVAL-100); levelboard.textContent='Level: '+level; }
 
-  updateGunAim(); // auto-aim gun at closest enemy
+  updateGunAim();
 }
 
 // Animate
